@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# secretos y datos locales (NO subir)
+/.cpanel.env
+/data/
+
+# espejo del sitio en vivo y backups (no son parte del OS)
+/site/
+/site-backup-*.zip
+
+# mantener el ejemplo de variables de entorno
+!.env.example
