@@ -19,7 +19,7 @@ export interface Noticia {
 }
 export interface SiteInfo {
   nombre: string; lema: string; ciudad: string; direccion: string;
-  horario: string; whatsapp: string; instagram: string;
+  horario: string; whatsapp: string; instagram: string; portada: string;
 }
 export type Coleccion = "tatuadores" | "publicaciones" | "noticias";
 export interface SiteContent {
@@ -38,6 +38,7 @@ const SEED: SiteContent = {
     horario: "Mar – Sáb · 11:00 am – 8:00 pm",
     whatsapp: "573227062595",
     instagram: "@lastrules",
+    portada: "",
   },
   tatuadores: [
     { id: "alejo", nombre: "Alejandro Martín", alias: "Alejo", estilos: ["Fundador", "Neo-Tradicional & Sombras"], bio: "Con 12 años de experiencia, es el visionario y fundador de Last Rules. Máster y Mejor Tatuaje en el Tattoo Music Fest.", fotoUrl: "assets/TATUADORES/ALEJO_1.png", instagram: "@Alejo_tak", activo: true },

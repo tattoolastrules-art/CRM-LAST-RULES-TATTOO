@@ -21,7 +21,7 @@ const FIELDS: Record<Coleccion, Field[]> = {
   noticias: [["titulo", "Título"], ["cuerpo", "Texto", "area"], ["imagenUrl", "Imagen (URL)"], ["fecha", "Fecha", "date"], ["publicada", "Publicada", "bool"]],
 };
 
-const INFO_FIELDS: Field[] = [["nombre", "Nombre"], ["lema", "Lema"], ["ciudad", "Ciudad"], ["direccion", "Dirección"], ["horario", "Horario"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"]];
+const INFO_FIELDS: Field[] = [["nombre", "Nombre"], ["lema", "Lema"], ["ciudad", "Ciudad"], ["direccion", "Dirección"], ["horario", "Horario"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["portada", "Portada (URL imagen)"]];
 
 // Redimensiona la imagen en el navegador antes de subir (evita fotos de 100 MB).
 async function resizeImage(file: File, maxDim = 1600, quality = 0.82): Promise<Blob> {
@@ -130,6 +130,25 @@ export default function SiteAdmin() {
     }
   }
 
+  async function handlePortadaFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const blob = await resizeImage(file, 1920, 0.8);
+      const fd = new FormData();
+      fd.append("file", blob, "portada.jpg");
+      fd.append("type", "info");
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await r.json();
+      if (r.ok && d.path) setInfo((p) => ({ ...p, portada: d.path }));
+      else alert(d.error || "Error subiendo la portada");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   if (!content) return <div className="p-6 text-bone-dim">Cargando…</div>;
 
   const list = (tab === "info" ? [] : (content[tab] as Item[])) ?? [];
@@ -190,6 +209,14 @@ export default function SiteAdmin() {
                   />
                 </label>
               ))}
+              <div>
+                <span className="text-[11px] text-bone-dim">Imagen de portada (se optimiza al subir)</span>
+                <label className="mt-1 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-gold/40 bg-gold/5 px-3 py-2 text-sm text-gold-soft hover:bg-gold/10">
+                  <ImagePlus size={15} /> {uploading ? "Subiendo…" : "Subir portada"}
+                  <input type="file" accept="image/*" onChange={handlePortadaFile} className="hidden" />
+                </label>
+                {info.portada ? <div className="mt-1 truncate text-[10px] text-bone-dim">📎 {String(info.portada)}</div> : null}
+              </div>
               <button onClick={() => post({ action: "info", info })} disabled={busy} className="flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy hover:bg-gold-soft">
                 <Save size={15} /> Guardar info
               </button>

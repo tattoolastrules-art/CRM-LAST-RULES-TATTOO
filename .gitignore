@@ -46,7 +46,7 @@ next-env.d.ts
 
 # espejo del sitio en vivo y backups (no son parte del OS)
 /site/
-/site-backup-*.zip
+/site-backup-*
 
 # mantener el ejemplo de variables de entorno
 !.env.example
