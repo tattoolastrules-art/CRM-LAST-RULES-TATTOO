@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Globe,
   Users,
+  Inbox,
   LogOut,
 } from "lucide-react";
 import { Logo } from "./Logo";
@@ -17,15 +18,17 @@ import CrmDashboard from "./CrmDashboard";
 import Agenda from "./Agenda";
 import SiteAdmin from "./SiteAdmin";
 import UsersAdmin from "./UsersAdmin";
+import ReservasAdmin from "./ReservasAdmin";
 import Login from "./Login";
 
-type View = "flujos" | "omni" | "crm" | "agenda" | "sitio" | "usuarios";
+type View = "flujos" | "omni" | "crm" | "reservas" | "agenda" | "sitio" | "usuarios";
 type AuthUser = { email: string; role: string; name: string } | null;
 
 const ITEMS = [
   { id: "flujos" as const, label: "Flujos", Icon: Workflow },
   { id: "omni" as const, label: "Omnicanal", Icon: MessageCircleMore },
   { id: "crm" as const, label: "CRM", Icon: LayoutDashboard },
+  { id: "reservas" as const, label: "Reservas", Icon: Inbox },
   { id: "agenda" as const, label: "Agenda", Icon: CalendarDays },
   { id: "sitio" as const, label: "Sitio", Icon: Globe },
   { id: "usuarios" as const, label: "Usuarios", Icon: Users },
@@ -96,6 +99,7 @@ export default function AppShell() {
         {current === "flujos" && <FlowBuilder />}
         {current === "omni" && <OmniInbox />}
         {current === "crm" && <CrmDashboard />}
+        {current === "reservas" && <ReservasAdmin />}
         {current === "agenda" && <Agenda />}
         {current === "sitio" && <SiteAdmin />}
         {current === "usuarios" && isAdmin && <UsersAdmin />}
