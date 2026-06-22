@@ -37,6 +37,7 @@ export default function CrmDashboard() {
   const [filter, setFilter] = useState<Stage | "todos">("todos");
   const [q, setQ] = useState("");
   const [webLeads, setWebLeads] = useState<Row[]>([]);
+  const [mostrarDemo, setMostrarDemo] = useState(false);
 
   useEffect(() => {
     fetch("/api/lead")
@@ -57,13 +58,19 @@ export default function CrmDashboard() {
       .catch(() => {});
   }, []);
 
-  const leads: Row[] = [...webLeads, ...(SEED_CONVERSATIONS as unknown as Row[])];
+  const leads: Row[] = mostrarDemo ? [...webLeads, ...(SEED_CONVERSATIONS as unknown as Row[])] : webLeads;
 
   const count = (s: Stage) => leads.filter((l) => l.stage === s).length;
   const enCierre = leads.filter((l) => ["agendando", "abono", "cerrado", "asesoria"].includes(l.stage)).length;
   const cerrados = leads.filter((l) => l.stage === "cerrado").length;
   const nuevasWeb = webLeads.filter((l) => l.unread).length;
   const maxFunnel = Math.max(1, ...FUNNEL.map(count));
+
+  const DAYS = 10;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const perDay = Array.from({ length: DAYS }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (DAYS - 1 - i)); return { d, n: 0 }; });
+  webLeads.forEach((l) => { const ld = new Date(l.lastAt); ld.setHours(0, 0, 0, 0); const idx = perDay.findIndex((x) => +x.d === +ld); if (idx >= 0) perDay[idx].n++; });
+  const maxDay = Math.max(1, ...perDay.map((x) => x.n));
 
   const rows = leads
     .filter((l) => (filter === "todos" ? true : l.stage === filter))
@@ -74,13 +81,20 @@ export default function CrmDashboard() {
 
   return (
     <div className="h-full overflow-y-auto p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="font-display text-lg text-bone">CRM · Coleccionistas</div>
+        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-[11px] text-bone-dim">
+          <input type="checkbox" checked={mostrarDemo} onChange={(e) => setMostrarDemo(e.target.checked)} className="accent-gold" />
+          Incluir datos demo
+        </label>
+      </div>
       {/* KPIs */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Leads totales" value={leads.length} Icon={Users} />
         <Kpi label="Reservas web" value={webLeads.length} Icon={Inbox} accent="#37C7C0" sub={nuevasWeb ? nuevasWeb + " nuevas" : undefined} />
         <Kpi label="En cierre" value={enCierre} Icon={Flame} gold />
         <Kpi label="Cerrados" value={cerrados} Icon={Trophy} />
-        <Kpi label="Tasa de cierre" value={`${Math.round((cerrados / leads.length) * 100)}%`} Icon={Percent} />
+        <Kpi label="Tasa de cierre" value={`${leads.length ? Math.round((cerrados / leads.length) * 100) : 0}%`} Icon={Percent} />
       </div>
 
       {/* Embudo */}
@@ -104,6 +118,20 @@ export default function CrmDashboard() {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Reservas por día */}
+      <div className="glass mb-5 rounded-xl p-4">
+        <div className="mb-3 text-[11px] uppercase tracking-widest text-bone-dim">Reservas web · últimos {DAYS} días</div>
+        <div className="flex items-end gap-2" style={{ height: 90 }}>
+          {perDay.map((x, i) => (
+            <div key={i} className="flex flex-1 flex-col items-center justify-end" title={x.d.toLocaleDateString("es-CO") + ": " + x.n}>
+              <div className="text-[10px] text-bone-dim">{x.n || ""}</div>
+              <div className="w-full rounded-t-md transition-all" style={{ height: Math.max(3, (x.n / maxDay) * 60), background: "linear-gradient(to top, #37C7C0, #37C7C055)" }} />
+              <div className="mt-1 text-[9px] text-bone-dim">{x.d.getDate()}</div>
+            </div>
+          ))}
         </div>
       </div>
 

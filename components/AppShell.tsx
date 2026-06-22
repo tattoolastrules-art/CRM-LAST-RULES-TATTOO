@@ -38,6 +38,7 @@ export default function AppShell() {
   const [view, setView] = useState<View>("flujos");
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
+  const [nuevas, setNuevas] = useState(0);
 
   useEffect(() => {
     fetch("/api/auth")
@@ -46,6 +47,14 @@ export default function AppShell() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/lead")
+      .then((r) => (r.ok ? r.json() : { leads: [] }))
+      .then((d) => setNuevas((d.leads || []).filter((l: { estado: string }) => l.estado === "nuevo").length))
+      .catch(() => {});
+  }, [user]);
 
   async function logout() {
     await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
@@ -70,12 +79,15 @@ export default function AppShell() {
           <button
             key={id}
             onClick={() => setView(id)}
-            className={`flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 transition ${
+            className={`relative flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 transition ${
               current === id ? "bg-gold/15 text-gold" : "text-bone-dim hover:bg-white/5 hover:text-bone"
             }`}
           >
             <Icon size={20} />
             <span className="text-[10px] font-medium">{label}</span>
+            {id === "reservas" && nuevas > 0 && (
+              <span className="absolute right-1.5 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#5B8CB7] px-1 text-[9px] font-bold text-white">{nuevas}</span>
+            )}
           </button>
         ))}
         <button

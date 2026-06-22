@@ -7,6 +7,7 @@ import { loadJSON, saveJSON } from "./store";
 export interface Lead {
   id: string; nombre: string; contacto: string; servicio: string;
   presupuesto: string; idea: string; fecha: string; estado: string; origen: string;
+  notas: string; maestro: string; fechaCita: string;
 }
 
 const s = (v: unknown, n: number) => String(v ?? "").slice(0, n);
@@ -27,6 +28,9 @@ export async function addLead(item: Record<string, unknown>): Promise<Lead> {
     fecha: new Date().toISOString(),
     estado: "nuevo",
     origen: s(item.origen || "web", 40),
+    notas: "",
+    maestro: "",
+    fechaCita: "",
   };
   leads.unshift(lead);
   await saveJSON("leads", leads.slice(0, 500));

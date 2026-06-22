@@ -48,5 +48,10 @@ next-env.d.ts
 /site/
 /site-backup-*
 
+# media de trabajo y herramientas locales (NO subir al repo)
+/videos-input/
+/media-out/
+/tools/
+
 # mantener el ejemplo de variables de entorno
 !.env.example
