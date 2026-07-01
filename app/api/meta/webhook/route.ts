@@ -1,8 +1,13 @@
 import crypto from "crypto";
 import { addMetaEvent } from "@/lib/meta";
+import { addLead } from "@/lib/leads";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+interface WaMessage { from?: string; type?: string; text?: { body?: string } }
+interface WaContact { profile?: { name?: string }; wa_id?: string }
+interface WaValue { messages?: WaMessage[]; contacts?: WaContact[] }
 
 // Verificación del webhook (Meta hace un GET con hub.challenge)
 export async function GET(req: Request) {
@@ -26,18 +31,27 @@ export async function POST(req: Request) {
   try {
     const object = typeof body.object === "string" ? body.object : "desconocido";
     const entry = Array.isArray(body.entry) ? (body.entry[0] as Record<string, unknown>) : null;
+    const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null;
+
     let summary = object;
-    if (entry) {
-      const changes = Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null;
-      const messaging = Array.isArray(entry.messaging) ? entry.messaging[0] : null;
-      if (changes) {
-        const value = (changes.value as Record<string, unknown>) || {};
-        summary = [object, changes.field, value.item || value.verb].filter(Boolean).join(" · ");
-      } else if (messaging) {
-        summary = object + " · mensaje";
-      }
+    if (changes) {
+      const value = (changes.value as Record<string, unknown>) || {};
+      summary = [object, changes.field, value.item || value.verb].filter(Boolean).join(" · ");
+    } else if (entry && Array.isArray(entry.messaging)) {
+      summary = object + " · mensaje";
     }
     await addMetaEvent({ id: crypto.randomBytes(4).toString("hex"), at: new Date().toISOString(), object, summary, raw: body });
+
+    // Mensaje entrante de WhatsApp → crea un lead en el CRM
+    if (object === "whatsapp_business_account" && changes) {
+      const value = changes.value as WaValue | undefined;
+      const m = value?.messages?.[0];
+      if (m && m.from) {
+        const text = m.text?.body || "[" + (m.type || "mensaje") + "]";
+        const name = value?.contacts?.[0]?.profile?.name || m.from;
+        await addLead({ nombre: name, contacto: m.from, servicio: "WhatsApp", idea: text, origen: "whatsapp" });
+      }
+    }
   } catch {
     /* nunca fallar el 200: Meta reintenta si no respondemos rápido */
   }
