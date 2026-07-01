@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Save, X, Upload, Eye, EyeOff, ImagePlus } from "lucide-react";
 
-type Coleccion = "tatuadores" | "publicaciones" | "noticias";
+type Coleccion = "tatuadores" | "publicaciones" | "noticias" | "premios";
 type Item = Record<string, unknown>;
 
 const TABS: { id: Coleccion | "info"; label: string }[] = [
   { id: "tatuadores", label: "Tatuadores" },
   { id: "publicaciones", label: "Publicaciones" },
   { id: "noticias", label: "Noticias" },
+  { id: "premios", label: "Premios" },
   { id: "info", label: "Info del sitio" },
 ];
 
@@ -19,6 +20,7 @@ const FIELDS: Record<Coleccion, Field[]> = {
   tatuadores: [["nombre", "Nombre"], ["estilos", "Estilos (separa con coma)"], ["bio", "Bio", "area"], ["fotoUrl", "Foto (URL)"], ["instagram", "Instagram"], ["activo", "Visible en la web", "bool"]],
   publicaciones: [["titulo", "Título"], ["descripcion", "Descripción", "area"], ["tatuador", "Tatuador"], ["imagenUrl", "Imagen (URL)"], ["fecha", "Fecha", "date"], ["destacado", "Destacada", "bool"]],
   noticias: [["titulo", "Título"], ["cuerpo", "Texto", "area"], ["imagenUrl", "Imagen (URL)"], ["fecha", "Fecha", "date"], ["publicada", "Publicada", "bool"]],
+  premios: [["titulo", "Título / Galardón"], ["evento", "Evento / Lugar"], ["anio", "Año"], ["imagenUrl", "Foto (URL)"], ["activo", "Visible en la web", "bool"]],
 };
 
 const INFO_FIELDS: Field[] = [["nombre", "Nombre"], ["lema", "Lema"], ["ciudad", "Ciudad"], ["direccion", "Dirección"], ["horario", "Horario"], ["whatsapp", "WhatsApp"], ["instagram", "Instagram"], ["portada", "Portada (URL imagen)"]];
@@ -103,14 +105,14 @@ export default function SiteAdmin() {
     setEditing(null);
   }
 
-  const FLAGFIELD: Record<Coleccion, string> = { tatuadores: "activo", publicaciones: "destacado", noticias: "publicada" };
+  const FLAGFIELD: Record<Coleccion, string> = { tatuadores: "activo", publicaciones: "destacado", noticias: "publicada", premios: "activo" };
   async function quickToggle(it: Item) {
     if (tab === "info") return;
     const f = FLAGFIELD[tab as Coleccion];
     await post({ action: "upsert", type: tab, item: { ...it, [f]: !it[f] } });
   }
 
-  const IMGFIELD: Record<Coleccion, string> = { tatuadores: "fotoUrl", publicaciones: "imagenUrl", noticias: "imagenUrl" };
+  const IMGFIELD: Record<Coleccion, string> = { tatuadores: "fotoUrl", publicaciones: "imagenUrl", noticias: "imagenUrl", premios: "imagenUrl" };
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || tab === "info" || !editing) return;

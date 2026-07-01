@@ -13,6 +13,7 @@ const FOLDERS: Record<string, string> = {
   publicaciones: "TATTOO",
   noticias: "NOTICIAS",
   info: "PORTADA",
+  premios: "PREMIOS",
 };
 
 function slug(s: string) {

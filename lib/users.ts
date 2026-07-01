@@ -15,7 +15,7 @@ export interface User {
 // y luego el admin asigna las de los artistas).
 const SEED: User[] = [
   { id: "chato", email: "chato@lastrulestattoo.com", name: "Chato (PRODY-G)", role: "admin", passHash: "", activo: true },
-  { id: "alejandro", email: "alejandro@lastrulestattoo.com", name: "Alejandro Martín", role: "artista", passHash: "", activo: true },
+  { id: "alejandro", email: "alejandro@lastrulestattoo.com", name: "Alejandro Martín", role: "admin", passHash: "", activo: true },
   { id: "jose", email: "jose@lastrulestattoo.com", name: "José Méndez", role: "artista", passHash: "", activo: true },
 ];
 

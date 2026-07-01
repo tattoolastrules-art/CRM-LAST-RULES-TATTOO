@@ -17,16 +17,20 @@ export interface Noticia {
   id: string; titulo: string; cuerpo: string; imagenUrl: string;
   fecha: string; publicada: boolean;
 }
+export interface Premio {
+  id: string; titulo: string; evento: string; anio: string; imagenUrl: string; activo: boolean;
+}
 export interface SiteInfo {
   nombre: string; lema: string; ciudad: string; direccion: string;
   horario: string; whatsapp: string; instagram: string; portada: string;
 }
-export type Coleccion = "tatuadores" | "publicaciones" | "noticias";
+export type Coleccion = "tatuadores" | "publicaciones" | "noticias" | "premios";
 export interface SiteContent {
   info: SiteInfo;
   tatuadores: Tatuador[];
   publicaciones: Publicacion[];
   noticias: Noticia[];
+  premios: Premio[];
 }
 
 const SEED: SiteContent = {
@@ -64,6 +68,13 @@ const SEED: SiteContent = {
     { id: "n1", titulo: "Gira por Medellín en julio", cuerpo: "Los Maestros viajan a Medellín. Cupos limitados, reserva con abono.", imagenUrl: "", fecha: "2026-06-15", publicada: true },
     { id: "n2", titulo: "Nuevos horarios de asesoría", cuerpo: "Asesorías gratis de martes a jueves. Agenda por WhatsApp.", imagenUrl: "", fecha: "2026-06-01", publicada: true },
   ],
+  premios: [
+    { id: "pr1", titulo: "Mejor Tatuaje", evento: "Tattoo Music Fest", anio: "", imagenUrl: "", activo: true },
+    { id: "pr2", titulo: "Convención", evento: "Milano, Italia", anio: "2025", imagenUrl: "", activo: true },
+    { id: "pr3", titulo: "Convención", evento: "Ofenbourg, Alemania", anio: "", imagenUrl: "", activo: true },
+    { id: "pr4", titulo: "Expotattoo", evento: "Bogotá & Medellín", anio: "", imagenUrl: "", activo: true },
+    { id: "pr5", titulo: "Expo Tatuaje", evento: "Ecuador", anio: "", imagenUrl: "", activo: true },
+  ],
 };
 
 function save(c: SiteContent) {
@@ -76,18 +87,19 @@ export async function getContent(): Promise<SiteContent> {
 
 export async function upsert(type: Coleccion, item: Record<string, unknown>) {
   const c = await getContent();
-  const arr = c[type] as Array<{ id: string }>;
+  const arr = (c[type] as Array<{ id: string }>) || [];
   const id = (item.id as string) || randomUUID().slice(0, 8);
   const i = arr.findIndex((x) => x.id === id);
   if (i >= 0) arr[i] = { ...arr[i], ...item, id };
   else arr.unshift({ ...item, id } as { id: string });
+  (c as unknown as Record<string, unknown>)[type] = arr;
   await save(c);
   return c;
 }
 
 export async function remove(type: Coleccion, id: string) {
   const c = await getContent();
-  const arr = (c[type] as Array<{ id: string }>).filter((x) => x.id !== id);
+  const arr = ((c[type] as Array<{ id: string }>) || []).filter((x) => x.id !== id);
   (c as unknown as Record<string, unknown>)[type] = arr;
   await save(c);
   return c;
