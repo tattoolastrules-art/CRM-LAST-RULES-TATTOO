@@ -6,8 +6,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface WaMessage { from?: string; type?: string; text?: { body?: string } }
-interface WaContact { profile?: { name?: string }; wa_id?: string }
-interface WaValue { messages?: WaMessage[]; contacts?: WaContact[] }
+interface Messaging { sender?: { id?: string }; message?: { text?: string } }
+interface Change { field?: string; value?: Record<string, unknown> }
+interface Entry { changes?: Change[]; messaging?: Messaging[] }
 
 // Verificación del webhook (Meta hace un GET con hub.challenge)
 export async function GET(req: Request) {
@@ -21,7 +22,44 @@ export async function GET(req: Request) {
   return new Response("Forbidden", { status: 403 });
 }
 
-// Recepción de eventos (Meta postea comentarios / mensajes / reacciones)
+// De un evento de Meta saca un lead (WhatsApp / Instagram / Facebook)
+function extractLead(object: string, entry: Entry | null): Record<string, unknown> | null {
+  if (!entry) return null;
+
+  // WhatsApp: mensaje entrante
+  if (object === "whatsapp_business_account") {
+    const value = entry.changes?.[0]?.value as
+      | { messages?: WaMessage[]; contacts?: { profile?: { name?: string } }[] }
+      | undefined;
+    const m = value?.messages?.[0];
+    if (m?.from) {
+      return { nombre: value?.contacts?.[0]?.profile?.name || m.from, contacto: m.from, servicio: "WhatsApp", idea: m.text?.body || "[mensaje]", origen: "whatsapp" };
+    }
+    return null;
+  }
+
+  const plat = object === "instagram" ? "Instagram" : "Facebook";
+
+  // DM (Instagram / Messenger)
+  const dm = entry.messaging?.[0];
+  if (dm?.message?.text) {
+    return { nombre: plat + " (DM)", contacto: dm.sender?.id || "", servicio: plat + " · DM", idea: dm.message.text, origen: object };
+  }
+
+  // Comentario (Instagram comments / Facebook feed)
+  const ch = entry.changes?.[0];
+  if (ch && (ch.field === "comments" || ch.field === "feed")) {
+    const v = ch.value || {};
+    if (ch.field === "feed" && v.item && v.item !== "comment") return null; // solo comentarios
+    const from = v.from as { name?: string; username?: string; id?: string } | undefined;
+    const text = (v.text as string) || (v.message as string) || "[comentario]";
+    return { nombre: from?.name || from?.username || plat + " (comentario)", contacto: from?.id || from?.username || "", servicio: "Comentario " + plat, idea: text, origen: object };
+  }
+
+  return null;
+}
+
+// Recepción de eventos
 export async function POST(req: Request) {
   const raw = await req.text();
   const body = ((): Record<string, unknown> => {
@@ -30,28 +68,18 @@ export async function POST(req: Request) {
 
   try {
     const object = typeof body.object === "string" ? body.object : "desconocido";
-    const entry = Array.isArray(body.entry) ? (body.entry[0] as Record<string, unknown>) : null;
-    const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null;
+    const entry = Array.isArray(body.entry) ? (body.entry[0] as Entry) : null;
 
-    let summary = object;
-    if (changes) {
-      const value = (changes.value as Record<string, unknown>) || {};
-      summary = [object, changes.field, value.item || value.verb].filter(Boolean).join(" · ");
-    } else if (entry && Array.isArray(entry.messaging)) {
-      summary = object + " · mensaje";
-    }
+    const ch = entry?.changes?.[0];
+    const summary = ch
+      ? [object, ch.field, (ch.value as Record<string, unknown>)?.item || (ch.value as Record<string, unknown>)?.verb].filter(Boolean).join(" · ")
+      : entry?.messaging
+      ? object + " · mensaje"
+      : object;
     await addMetaEvent({ id: crypto.randomBytes(4).toString("hex"), at: new Date().toISOString(), object, summary, raw: body });
 
-    // Mensaje entrante de WhatsApp → crea un lead en el CRM
-    if (object === "whatsapp_business_account" && changes) {
-      const value = changes.value as WaValue | undefined;
-      const m = value?.messages?.[0];
-      if (m && m.from) {
-        const text = m.text?.body || "[" + (m.type || "mensaje") + "]";
-        const name = value?.contacts?.[0]?.profile?.name || m.from;
-        await addLead({ nombre: name, contacto: m.from, servicio: "WhatsApp", idea: text, origen: "whatsapp" });
-      }
-    }
+    const lead = extractLead(object, entry);
+    if (lead) await addLead(lead);
   } catch {
     /* nunca fallar el 200: Meta reintenta si no respondemos rápido */
   }
