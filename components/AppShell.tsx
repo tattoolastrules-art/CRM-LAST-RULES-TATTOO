@@ -102,8 +102,8 @@ export default function AppShell() {
   const current = items.some((it) => it.id === view) ? view : "flujos";
 
   return (
-    <div className="flex h-screen w-screen flex-col-reverse overflow-hidden sm:flex-row">
-      <nav className="flex h-[64px] w-full shrink-0 flex-row items-center gap-1 overflow-x-auto border-t border-line/60 bg-navy-soft px-2 sm:h-auto sm:w-[78px] sm:flex-col sm:overflow-y-auto sm:border-r sm:border-t-0 sm:px-0 sm:py-4">
+    <div className="flex h-screen w-screen flex-col-reverse overflow-hidden sm:flex-row" style={{ height: "100dvh" }}>
+      <nav className="flex min-h-[60px] w-full shrink-0 flex-row items-center gap-1 overflow-x-auto border-t border-line/60 bg-navy-soft px-2 pb-[env(safe-area-inset-bottom)] sm:h-auto sm:min-h-0 sm:w-[78px] sm:flex-col sm:overflow-y-auto sm:border-r sm:border-t-0 sm:px-0 sm:py-4 sm:pb-4">
         <div className="mb-0 hidden sm:mb-4 sm:block">
           <Logo size={42} />
         </div>
@@ -147,7 +147,7 @@ export default function AppShell() {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-hidden">
+      <main className="min-h-0 flex-1 overflow-hidden">
         {current === "flujos" && <FlowBuilder />}
         {current === "omni" && <OmniInbox />}
         {current === "crm" && <CrmDashboard />}

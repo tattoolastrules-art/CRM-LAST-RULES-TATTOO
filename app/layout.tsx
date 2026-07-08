@@ -1,4 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 import { Cinzel, Montserrat } from "next/font/google";
 import "./globals.css";
 
