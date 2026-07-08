@@ -1,14 +1,28 @@
 import crypto from "crypto";
 import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
-import { anovaReply } from "@/lib/anova";
-import { waConfigured, sendWhatsAppText } from "@/lib/whatsapp";
+import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
+import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
 import { getSettings } from "@/lib/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface WaMessage { from?: string; type?: string; text?: { body?: string } }
+interface WaMedia { id?: string; caption?: string; mime_type?: string; filename?: string }
+interface WaMessage {
+  from?: string;
+  type?: string;
+  text?: { body?: string };
+  image?: WaMedia;
+  video?: WaMedia;
+  audio?: WaMedia;
+  sticker?: WaMedia;
+  document?: WaMedia;
+  location?: { latitude?: number; longitude?: number; name?: string };
+  reaction?: { emoji?: string };
+  button?: { text?: string };
+  interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
+}
 interface Messaging { sender?: { id?: string }; message?: { text?: string } }
 interface Change { field?: string; value?: Record<string, unknown> }
 interface Entry { changes?: Change[]; messaging?: Messaging[] }
@@ -25,18 +39,64 @@ export async function GET(req: Request) {
   return new Response("Forbidden", { status: 403 });
 }
 
+// Identifica el tipo de mensaje de WhatsApp y arma su descripción para el CRM
+function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: string; caption?: string; texto?: string } {
+  const t = m.type || "text";
+  switch (t) {
+    case "text":
+      return { label: m.text?.body || "", waType: "text", texto: m.text?.body || "" };
+    case "image":
+      return { label: "📷 Imagen" + (m.image?.caption ? " — " + m.image.caption : ""), waType: "image", mediaId: m.image?.id, caption: m.image?.caption || "" };
+    case "video":
+      return { label: "🎬 Video" + (m.video?.caption ? " — " + m.video.caption : ""), waType: "video" };
+    case "audio":
+      return { label: "🎤 Nota de voz", waType: "audio" };
+    case "sticker":
+      return { label: "😄 Sticker", waType: "sticker" };
+    case "document":
+      return { label: "📄 " + (m.document?.filename || "Documento") + (m.document?.caption ? " — " + m.document.caption : ""), waType: "document" };
+    case "location":
+      return { label: "📍 Ubicación" + (m.location?.name ? ": " + m.location.name : ""), waType: "location" };
+    case "contacts":
+      return { label: "👤 Contacto compartido", waType: "contacts" };
+    case "reaction":
+      return { label: "Reaccionó " + (m.reaction?.emoji || "👍"), waType: "reaction" };
+    case "button":
+      return { label: m.button?.text || "[botón]", waType: "text", texto: m.button?.text || "" };
+    case "interactive": {
+      const title = m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || "[interacción]";
+      return { label: title, waType: "text", texto: title };
+    }
+    default:
+      return { label: "[" + t + "]", waType: t };
+  }
+}
+
 // De un evento de Meta saca un lead (WhatsApp / Instagram / Facebook)
-function extractLead(object: string, entry: Entry | null): Record<string, unknown> | null {
+function extractLead(object: string, entry: Entry | null):
+  | (Record<string, unknown> & { waType?: string; mediaId?: string; caption?: string; texto?: string })
+  | null {
   if (!entry) return null;
 
-  // WhatsApp: mensaje entrante
+  // WhatsApp: mensaje entrante (cualquier tipo)
   if (object === "whatsapp_business_account") {
     const value = entry.changes?.[0]?.value as
       | { messages?: WaMessage[]; contacts?: { profile?: { name?: string } }[] }
       | undefined;
     const m = value?.messages?.[0];
-    if (m?.from) {
-      return { nombre: value?.contacts?.[0]?.profile?.name || m.from, contacto: m.from, servicio: "WhatsApp", idea: m.text?.body || "[mensaje]", origen: "whatsapp" };
+    if (m && m.from) {
+      const d = describeWa(m);
+      return {
+        nombre: value?.contacts?.[0]?.profile?.name || m.from,
+        contacto: m.from,
+        servicio: "WhatsApp",
+        idea: d.label || "[mensaje]",
+        origen: "whatsapp",
+        waType: d.waType,
+        mediaId: d.mediaId,
+        caption: d.caption,
+        texto: d.texto,
+      };
     }
     return null;
   }
@@ -60,6 +120,29 @@ function extractLead(object: string, entry: Entry | null): Record<string, unknow
   }
 
   return null;
+}
+
+// Elige la respuesta de Ana según el tipo de mensaje
+async function replyFor(lead: { waType?: string; mediaId?: string; caption?: string; texto?: string; idea?: unknown; nombre?: unknown }): Promise<string | null> {
+  const type = lead.waType || "text";
+
+  if (type === "reaction") return null; // a una reacción no se responde (queda en el CRM)
+
+  if (type === "image" && lead.mediaId) {
+    // Ana MIRA la imagen (visión); si no puede, respuesta predefinida
+    const media = await fetchMediaBase64(lead.mediaId);
+    if (media && media.mime.startsWith("image/")) {
+      const v = await anovaVision(media.b64, media.mime, lead.caption || "", String(lead.nombre || ""));
+      if (v) return v;
+    }
+    return typeReply("image");
+  }
+
+  const predef = typeReply(type);
+  if (predef) return predef; // sticker, audio, video, documento, ubicación, contacto
+
+  const { reply } = await anovaReply(String(lead.texto ?? lead.idea ?? ""), String(lead.nombre || ""));
+  return reply;
 }
 
 // Recepción de eventos
@@ -89,8 +172,8 @@ export async function POST(req: Request) {
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
-            const { reply } = await anovaReply(String(lead.idea || ""), String(lead.nombre || ""));
-            await sendWhatsAppText(String(lead.contacto), reply);
+            const reply = await replyFor(lead);
+            if (reply) await sendWhatsAppText(String(lead.contacto), reply);
           } catch {
             /* si falla el envío no rompemos la recepción */
           }

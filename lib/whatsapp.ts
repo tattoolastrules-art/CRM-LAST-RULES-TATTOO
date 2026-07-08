@@ -6,6 +6,27 @@ export function waConfigured(): boolean {
   return !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
 }
 
+// Descarga un archivo multimedia recibido (imagen/audio/etc.) en base64.
+export async function fetchMediaBase64(mediaId: string): Promise<{ b64: string; mime: string } | null> {
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const meta = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!meta.ok) return null;
+    const info = (await meta.json()) as { url?: string; mime_type?: string };
+    if (!info.url) return null;
+    const bin = await fetch(info.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!bin.ok) return null;
+    const buf = Buffer.from(await bin.arrayBuffer());
+    if (buf.length > 4_500_000) return null; // demasiado grande para visión
+    return { b64: buf.toString("base64"), mime: info.mime_type || "image/jpeg" };
+  } catch {
+    return null;
+  }
+}
+
 export async function sendWhatsAppText(to: string, text: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
