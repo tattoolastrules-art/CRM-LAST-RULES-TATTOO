@@ -6,6 +6,10 @@ import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp
 import { getSettings } from "@/lib/settings";
 import { addConvoMsg } from "@/lib/convos";
 import { pushAll } from "@/lib/push";
+import { notifyStudio } from "@/lib/notify";
+
+const ABONO_RE = /(abono|comprobante|consign|transferencia|transferí|nequi|daviplata|pag(u?é|ado|o\s+ya))/i;
+const CONFIRM_RE = /^(confirmo|s[ií],?\s*(confirmo|asistir[eé]|voy|all[ií]\s+estar[eé])|all[ií]\s+estar[eé])/i;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -187,6 +191,16 @@ export async function POST(req: Request) {
         // Notificación push al equipo (en los dispositivos con avisos activados)
         if (lead.waType !== "reaction") {
           pushAll("💬 " + String(lead.nombre || "WhatsApp"), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
+        }
+
+        // Avisos IMPORTANTES al WhatsApp del estudio: abonos y confirmaciones de cita
+        const texto = String(lead.texto ?? lead.idea ?? "");
+        if (lead.waType === "image" && ABONO_RE.test(String(lead.caption || ""))) {
+          notifyStudio(`💰 POSIBLE COMPROBANTE DE ABONO\n${lead.nombre}\n📱 ${lead.contacto}\n“${lead.caption}” (envió imagen)`).catch(() => {});
+        } else if (ABONO_RE.test(texto)) {
+          notifyStudio(`💰 POSIBLE ABONO / PAGO\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 200)}”`).catch(() => {});
+        } else if (CONFIRM_RE.test(texto)) {
+          notifyStudio(`✅ CONFIRMÓ ASISTENCIA\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 120)}”`).catch(() => {});
         }
 
         // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)

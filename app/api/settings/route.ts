@@ -22,6 +22,7 @@ export async function POST(req: Request) {
 
   const patch: Partial<Settings> = {};
   if (typeof b.anovaAuto === "boolean") patch.anovaAuto = b.anovaAuto;
+  if (typeof b.notifyPhone === "string") patch.notifyPhone = b.notifyPhone;
 
   // Los módulos solo los administra el dueño del sistema (Chato / PRODY-G)
   if (b.modules && typeof b.modules === "object") {

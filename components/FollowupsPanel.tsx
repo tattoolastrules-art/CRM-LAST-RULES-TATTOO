@@ -15,9 +15,11 @@ export default function FollowupsPanel({ onClose }: { onClose: () => void }) {
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState(false);
+  const [notifyPhone, setNotifyPhone] = useState("");
 
   useEffect(() => {
     fetch("/api/followups").then((r) => (r.ok ? r.json() : null)).then((d) => d && setCfg(d)).catch(() => {});
+    fetch("/api/settings").then((r) => (r.ok ? r.json() : null)).then((s) => s && setNotifyPhone(s.notifyPhone || "")).catch(() => {});
   }, []);
 
   async function save() {
@@ -25,8 +27,9 @@ export default function FollowupsPanel({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const r = await fetch("/api/followups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
-      if (r.ok) { setOk(true); setTimeout(() => setOk(false), 2500); }
-      else alert("Solo administradores pueden editar el seguimiento.");
+      const r2 = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notifyPhone }) });
+      if (r.ok && r2.ok) { setOk(true); setTimeout(() => setOk(false), 2500); }
+      else alert("Solo administradores pueden editar esto.");
     } finally { setBusy(false); }
   }
 
@@ -44,6 +47,18 @@ export default function FollowupsPanel({ onClose }: { onClose: () => void }) {
         </div>
         <button onClick={onClose} className="text-bone-dim hover:text-bone"><X size={16} /></button>
       </div>
+
+      <label className="mb-3 block rounded-lg border border-gold/25 bg-gold/5 p-2.5">
+        <span className="text-[11px] font-medium text-gold-soft">📲 WhatsApp del estudio para AVISOS importantes</span>
+        <input
+          value={notifyPhone}
+          onChange={(e) => setNotifyPhone(e.target.value)}
+          placeholder="Ej: 3001234567 (a este número llegan citas, abonos y confirmaciones)"
+          inputMode="tel"
+          className="mt-1 w-full rounded-lg border border-line bg-navy px-3 py-2 text-[12px] text-bone outline-none focus:border-gold/50"
+        />
+        <span className="mt-1 block text-[9.5px] text-bone-dim/70">Recibe: 🌐 reservas web · 📅 citas agendadas · 💰 posibles abonos/comprobantes · ✅ confirmaciones de asistencia</span>
+      </label>
 
       <label className="mb-3 block">
         <span className="text-[11px] text-bone-dim">Confirmación de cita (se envía el día antes) · usa {"{nombre}"} y {"{fecha}"}</span>
