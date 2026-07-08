@@ -268,7 +268,7 @@ export default function OmniInbox() {
             <button
               onClick={suggest}
               disabled={loading}
-              title="Lana sugiere el cierre"
+              title="Ana sugiere el cierre"
               className="rounded-full p-1.5 text-gold transition hover:bg-white/5 disabled:opacity-50"
             >
               <Sparkles size={20} />
@@ -281,7 +281,7 @@ export default function OmniInbox() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") send(draft);
               }}
-              placeholder={loading ? "Lana está escribiendo…" : "Escribe un mensaje"}
+              placeholder={loading ? "Ana está escribiendo…" : "Escribe un mensaje"}
               className="flex-1 rounded-lg bg-[#2a3942] px-3 py-2 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
             />
             {draft.trim() ? (

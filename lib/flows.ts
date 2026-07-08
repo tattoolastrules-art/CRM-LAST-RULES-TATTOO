@@ -1,7 +1,7 @@
 // Flujos de conversación tipo ManyChat: cajitas (nodos) conectadas por puntos.
 // Cada flujo = cómo se estructura una conversación (disparador → mensajes → ramas).
 // ANOVA = IA automática del proyecto (nodos kind "ai"): clasifica, responde
-// dinámico en voz de Lana, escala a humano y aprende. 20 flujos.
+// dinámico en voz de Ana, escala a humano y aprende. 20 flujos.
 // REGLA DE COSTO: nodos "message" = respuestas PREDEFINIDAS (instantáneas, SIN
 // tokens) para reacciones/comentarios/saludos; nodos "ai" (ANOVA) = respuesta
 // con IA (Claude), solo cuando hace falta una respuesta humana real.
@@ -47,13 +47,13 @@ export const FLOWS: FlowDef[] = [
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 160, title: "Disparador", text: "hola · buenas · info · precio · tatu 👋" },
       { id: "ai1", kind: "ai", x: X[1], y: 160, title: "ANOVA · Intención", text: "Clasifica el 1er mensaje (saludo/idea/precio/ubicación/reclamo) y enruta." },
-      { id: "m1", kind: "message", x: X[2], y: 160, title: "Saludo Lana", text: "¡Hola! Qué bueno que escribes 🖤 Soy Lana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?" },
+      { id: "m1", kind: "message", x: X[2], y: 160, title: "Saludo Ana", text: "¡Hola! Qué bueno que escribes 🖤 Soy Ana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?" },
       { id: "c1", kind: "choice", x: X[3], y: 150, title: "¿Cómo viene?", options: ["Ya sé qué quiero", "Idea vaga", "¿Cuánto cuesta?", "Ubicación / horario"] },
       { id: "h1", kind: "handoff", x: X[4], y: 20, title: "→ F2 Cotización", text: "Recoge idea/zona/tamaño." },
       { id: "h2", kind: "handoff", x: X[4], y: 150, title: "→ F3 Asesoría", text: "Orienta o agenda asesoría." },
       { id: "h3", kind: "handoff", x: X[4], y: 280, title: "→ F7 Precio", text: "Maneja la objeción de valor." },
       { id: "m2", kind: "message", x: X[4], y: 410, title: "Ubicación / horario", text: "El Templo · Bogotá 📍 Mar–Sáb 11am–8pm. ¿Te muestro portafolio o agendamos? 👑" },
-      { id: "ai2", kind: "ai", x: X[3], y: 400, title: "ANOVA · Fallback", text: "Si nada encaja, responde como Lana y reencauza a agendar." },
+      { id: "ai2", kind: "ai", x: X[3], y: 400, title: "ANOVA · Fallback", text: "Si nada encaja, responde como Ana y reencauza a agendar." },
     ],
     edges: [
       { from: "t", to: "ai1" },
@@ -108,7 +108,7 @@ export const FLOWS: FlowDef[] = [
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "Camino", options: ["Muéstrame estilos", "Asesoría presencial", "Tengo dudas sueltas"] },
       { id: "m2", kind: "message", x: X[4], y: 60, title: "Estilos sugeridos", text: "Línea fina, dark work o neo-tribal te quedarían divinos. Te paso ejemplos del portafolio 👑" },
       { id: "h1", kind: "handoff", x: X[4], y: 200, title: "→ F5 (asesoría gratis)", text: "" },
-      { id: "ai2", kind: "ai", x: X[4], y: 340, title: "ANOVA · Resuelve dudas", text: "Responde dudas abiertas en voz de Lana y cierra invitando a agendar." },
+      { id: "ai2", kind: "ai", x: X[4], y: 340, title: "ANOVA · Resuelve dudas", text: "Responde dudas abiertas en voz de Ana y cierra invitando a agendar." },
     ],
     edges: [
       { from: "t", to: "m1" },
@@ -341,7 +341,7 @@ export const FLOWS: FlowDef[] = [
       { id: "t", kind: "trigger", x: X[0], y: 200, title: "Mensaje sin flujo", text: "Cualquier texto que no dispare F1–F11" },
       { id: "ai1", kind: "ai", x: X[1], y: 200, title: "ANOVA · Comprende", text: "Interpreta intención con el contexto del lead y la base de conocimiento." },
       { id: "c1", kind: "choice", x: X[2], y: 200, title: "¿Puede resolver?", options: ["Sí, responde", "Necesita humano", "Es comercial"] },
-      { id: "ai2", kind: "ai", x: X[3], y: 60, title: "ANOVA · Responde", text: "Genera respuesta en voz de Lana, sin precio ni descuento, y reencauza." },
+      { id: "ai2", kind: "ai", x: X[3], y: 60, title: "ANOVA · Responde", text: "Genera respuesta en voz de Ana, sin precio ni descuento, y reencauza." },
       { id: "h1", kind: "handoff", x: X[3], y: 200, title: "→ director artístico", text: "Escala a humano con resumen del caso." },
       { id: "h2", kind: "handoff", x: X[3], y: 340, title: "→ F2 Cotización", text: "Si hay intención de compra, cierra." },
       { id: "a1", kind: "action", x: X[4], y: 60, title: "Aprende", text: "Guarda la pregunta nueva para enriquecer la base." },
@@ -422,7 +422,7 @@ export const FLOWS: FlowDef[] = [
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 220, title: "Reacción / mensaje corto", text: "👍 · sticker · «hola» · «?» · nota de voz" },
       { id: "c1", kind: "choice", x: X[1], y: 220, title: "Tipo", options: ["Saludo simple", "👍 / sticker", "Solo «?»", "Nota de voz"] },
-      { id: "m1", kind: "message", x: X[2], y: 60, title: "Predefinida · saludo", text: "¡Hola! 🖤 Soy Lana de LAST RULES. ¿Qué Pieza tienes en mente?" },
+      { id: "m1", kind: "message", x: X[2], y: 60, title: "Predefinida · saludo", text: "¡Hola! 🖤 Soy Ana de LAST RULES. ¿Qué Pieza tienes en mente?" },
       { id: "m2", kind: "message", x: X[2], y: 190, title: "Predefinida · sticker", text: "🤍 ¿Te ayudo a cotizar o a agendar tu Pieza?" },
       { id: "m3", kind: "message", x: X[2], y: 320, title: "Predefinida · «?»", text: "Cuéntame un poco más y te oriento al toque ✨" },
       { id: "a1", kind: "action", x: X[2], y: 450, title: "Transcribe audio", text: "ANOVA transcribe la nota de voz (solo si hay audio)." },

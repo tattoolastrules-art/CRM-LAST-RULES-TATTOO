@@ -1,6 +1,6 @@
 // ANOVA: decide la respuesta automática a un mensaje entrante.
 // Regla de costo: saludos/mensajes triviales → respuesta PREDEFINIDA (sin tokens);
-// conversación real → Claude con la voz comercial de Lana.
+// conversación real → Claude con la voz comercial de Ana.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./lana-prompt";
@@ -10,9 +10,9 @@ const GREETING =
 
 // Bienvenidas humanas (se rota una al azar para no sonar robótico)
 const WELCOMES = [
-  "¡Hola! Qué bueno que escribes 🖤 Soy Lana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?",
-  "¡Hey, bienvenid@ a Last Rules! 🖤 Soy Lana. Dime, ¿qué tienes en mente? ¿algo delicado, algo con presencia…? ✨",
-  "¡Hola! Soy Lana, de Last Rules 🤍 Me encanta que estés aquí. ¿Qué idea traes en la cabeza para tu piel?",
+  "¡Hola! Qué bueno que escribes 🖤 Soy Ana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?",
+  "¡Hey, bienvenid@ a Last Rules! 🖤 Soy Ana. Dime, ¿qué tienes en mente? ¿algo delicado, algo con presencia…? ✨",
+  "¡Hola! Soy Ana, de Last Rules 🤍 Me encanta que estés aquí. ¿Qué idea traes en la cabeza para tu piel?",
 ];
 export const WELCOME = WELCOMES[0];
 export function randomWelcome() {

@@ -2,7 +2,7 @@
 import { loadJSON, saveJSON } from "./store";
 
 export interface Settings {
-  anovaAuto: boolean; // respuestas automáticas de ANOVA/Lana en WhatsApp
+  anovaAuto: boolean; // respuestas automáticas de ANOVA/Ana en WhatsApp
 }
 
 const DEFAULTS: Settings = { anovaAuto: true };

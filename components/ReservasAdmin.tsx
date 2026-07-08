@@ -99,7 +99,7 @@ export default function ReservasAdmin() {
           {anova !== null && (
             <button
               onClick={toggleAnova}
-              title="Respuestas automáticas de ANOVA/Lana en WhatsApp"
+              title="Respuestas automáticas de ANOVA/Ana en WhatsApp"
               className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${anova ? "border-[#37C7C0]/50 bg-[#37C7C0]/10 text-[#37C7C0]" : "border-line bg-navy-soft text-bone-dim"}`}
             >
               <span className={`h-2.5 w-2.5 rounded-full ${anova ? "bg-[#37C7C0]" : "bg-line"}`} />

@@ -17,7 +17,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Last Rules OS — El Templo de la Piel",
   description:
-    "CRM, agenda y chat omnicanal con Lana, la asesora comercial de LAST RULES TATTOO.",
+    "CRM, agenda y chat omnicanal con Ana, la asesora comercial de LAST RULES TATTOO.",
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
