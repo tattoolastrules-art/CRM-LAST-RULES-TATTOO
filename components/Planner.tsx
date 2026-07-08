@@ -36,14 +36,28 @@ export default function Planner() {
   }, []);
 
   async function post(body: unknown) {
-    const r = await fetch("/api/planner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (r.ok) { const d = await r.json(); setItems(d.items); }
+    try {
+      const r = await fetch("/api/planner", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (r.ok) setItems(d.items);
+      else alert(d.error || "No se pudo guardar (vuelve a iniciar sesión)");
+    } catch {
+      alert("Error de conexión — reintenta");
+    }
   }
+
+  const [diaSel, setDiaSel] = useState<string | null>(null);
 
   function quickAdd() {
     if (!titulo.trim()) return;
-    post({ action: "upsert", item: { titulo: titulo.trim(), canal, col: "ideas" } });
+    post({ action: "upsert", item: { titulo: titulo.trim(), canal, col: diaSel ? "programada" : "ideas", fecha: diaSel || "" } });
     setTitulo("");
+    setDiaSel(null);
+  }
+
+  function crearEnDia(iso: string) {
+    const t = prompt("Título de la campaña para el " + iso.split("-").reverse().join("/") + ":");
+    if (t && t.trim()) post({ action: "upsert", item: { titulo: t.trim(), canal, col: "programada", fecha: iso } });
   }
 
   function onDrop(col: string) {
@@ -106,7 +120,7 @@ export default function Planner() {
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && quickAdd()}
-            placeholder="Nueva idea… (ej: Reel del cover-up de María)"
+            placeholder={diaSel ? "Nueva campaña para el " + diaSel.split("-").reverse().join("/") + "…" : "Nueva idea… (ej: Reel del cover-up de María)"}
             className="w-full rounded-lg border border-line bg-navy-soft px-3 py-2 text-sm text-bone outline-none placeholder:text-bone-dim/60 focus:border-gold/50 sm:w-64"
           />
           <select value={canal} onChange={(e) => setCanal(e.target.value)} className="rounded-lg border border-line bg-navy-soft px-2 py-2 text-sm text-bone outline-none">
@@ -162,9 +176,19 @@ export default function Planner() {
                   key={iso}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => dropEnDia(iso)}
-                  className={`flex flex-col gap-0.5 rounded-md border p-1 transition ${iso === hoyIso ? "border-gold/50 bg-gold/5" : "border-line/30 hover:border-line/70"}`}
+                  onClick={() => setDiaSel(diaSel === iso ? null : iso)}
+                  className={`group/dia flex cursor-pointer flex-col gap-0.5 rounded-md border p-1 transition ${diaSel === iso ? "border-gold ring-1 ring-gold/50" : iso === hoyIso ? "border-gold/50 bg-gold/5" : "border-line/30 hover:border-line/70"}`}
                 >
-                  <span className={`text-[10px] ${iso === hoyIso ? "font-bold text-gold" : "text-bone-dim"}`}>{Number(iso.slice(8))}</span>
+                  <span className="flex items-center justify-between">
+                    <span className={`text-[10px] ${iso === hoyIso ? "font-bold text-gold" : "text-bone-dim"}`}>{Number(iso.slice(8))}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); crearEnDia(iso); }}
+                      title="Crear campaña este día"
+                      className="rounded px-1 text-[11px] leading-none text-bone-dim/40 hover:bg-gold/20 hover:text-gold sm:opacity-0 sm:group-hover/dia:opacity-100"
+                    >
+                      +
+                    </button>
+                  </span>
                   {items.filter((x) => x.fecha === iso).map((c) => {
                     const cn = CANALES[c.canal] || CANALES.otro;
                     return (
