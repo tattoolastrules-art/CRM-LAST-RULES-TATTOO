@@ -13,7 +13,7 @@ const HEAD: Record<
   choice: { label: "Decisión", color: "#C5A059", Icon: GitBranch },
   action: { label: "Acción", color: "#8E7CC3", Icon: Database },
   handoff: { label: "Continuar", color: "#D8A24A", Icon: UserCog },
-  ai: { label: "ANOVA · IA", color: "#37C7C0", Icon: Sparkles },
+  ai: { label: "NOVA · IA", color: "#37C7C0", Icon: Sparkles },
 };
 
 const dot = "!h-3 !w-3 !rounded-full !bg-gold !border-2 !border-[#0f1522]";

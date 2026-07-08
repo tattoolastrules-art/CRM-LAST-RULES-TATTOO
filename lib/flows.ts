@@ -1,9 +1,9 @@
 // Flujos de conversación tipo ManyChat: cajitas (nodos) conectadas por puntos.
 // Cada flujo = cómo se estructura una conversación (disparador → mensajes → ramas).
-// ANOVA = IA automática del proyecto (nodos kind "ai"): clasifica, responde
+// NOVA = IA automática del proyecto (nodos kind "ai"): clasifica, responde
 // dinámico en voz de Ana, escala a humano y aprende. 20 flujos.
 // REGLA DE COSTO: nodos "message" = respuestas PREDEFINIDAS (instantáneas, SIN
-// tokens) para reacciones/comentarios/saludos; nodos "ai" (ANOVA) = respuesta
+// tokens) para reacciones/comentarios/saludos; nodos "ai" (NOVA) = respuesta
 // con IA (Claude), solo cuando hace falta una respuesta humana real.
 
 export type FlowKind = "trigger" | "message" | "choice" | "action" | "handoff" | "ai";
@@ -42,18 +42,18 @@ export const FLOWS: FlowDef[] = [
     id: "f1",
     code: "F1",
     name: "Bienvenida · Primer Contacto",
-    desc: "ANOVA clasifica el primer mensaje y enruta a cotizar, asesorar o precio.",
+    desc: "NOVA clasifica el primer mensaje y enruta a cotizar, asesorar o precio.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 160, title: "Disparador", text: "hola · buenas · info · precio · tatu 👋" },
-      { id: "ai1", kind: "ai", x: X[1], y: 160, title: "ANOVA · Intención", text: "Clasifica el 1er mensaje (saludo/idea/precio/ubicación/reclamo) y enruta." },
+      { id: "ai1", kind: "ai", x: X[1], y: 160, title: "NOVA · Intención", text: "Clasifica el 1er mensaje (saludo/idea/precio/ubicación/reclamo) y enruta." },
       { id: "m1", kind: "message", x: X[2], y: 160, title: "Saludo Ana", text: "¡Hola! Qué bueno que escribes 🖤 Soy Ana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?" },
       { id: "c1", kind: "choice", x: X[3], y: 150, title: "¿Cómo viene?", options: ["Ya sé qué quiero", "Idea vaga", "¿Cuánto cuesta?", "Ubicación / horario"] },
       { id: "h1", kind: "handoff", x: X[4], y: 20, title: "→ F2 Cotización", text: "Recoge idea/zona/tamaño." },
       { id: "h2", kind: "handoff", x: X[4], y: 150, title: "→ F3 Asesoría", text: "Orienta o agenda asesoría." },
       { id: "h3", kind: "handoff", x: X[4], y: 280, title: "→ F7 Precio", text: "Maneja la objeción de valor." },
       { id: "m2", kind: "message", x: X[4], y: 410, title: "Ubicación / horario", text: "El Templo · Bogotá 📍 Mar–Sáb 11am–8pm. ¿Te muestro portafolio o agendamos? 👑" },
-      { id: "ai2", kind: "ai", x: X[3], y: 400, title: "ANOVA · Fallback", text: "Si nada encaja, responde como Ana y reencauza a agendar." },
+      { id: "ai2", kind: "ai", x: X[3], y: 400, title: "NOVA · Fallback", text: "Si nada encaja, responde como Ana y reencauza a agendar." },
     ],
     edges: [
       { from: "t", to: "ai1" },
@@ -70,12 +70,12 @@ export const FLOWS: FlowDef[] = [
     id: "f2",
     code: "F2",
     name: "Cotización",
-    desc: "Captura idea/zona/tamaño, ANOVA lee la referencia, empuja a abono.",
+    desc: "Captura idea/zona/tamaño, NOVA lee la referencia, empuja a abono.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "quiero cotizar · describe su idea" },
       { id: "m1", kind: "message", x: X[1], y: 180, title: "Pide detalles", text: "Cuéntame estilo, tamaño aprox (cm) y zona. Si tienes referencia, mándala 🖤" },
-      { id: "ai1", kind: "ai", x: X[2], y: 60, title: "ANOVA · Lee referencia", text: "Interpreta texto/imagen, estima complejidad y resume idea/zona/tamaño." },
+      { id: "ai1", kind: "ai", x: X[2], y: 60, title: "NOVA · Lee referencia", text: "Interpreta texto/imagen, estima complejidad y resume idea/zona/tamaño." },
       { id: "a1", kind: "action", x: X[3], y: 60, title: "Guarda en CRM", text: "estado = Cotizado · idea/zona/tamaño/ref" },
       { id: "m2", kind: "message", x: X[2], y: 220, title: "Rango honesto", text: "Por lo que describes, los Maestros lo cotizan a la medida 👑 No damos precio en frío para no quedarnos cortos con tu Obra." },
       { id: "m3", kind: "message", x: X[3], y: 220, title: "Cierre a agenda", text: "Para apartar cupo va un abono de $100.000 que se descuenta del total. ¿Entre semana o fin de semana?" },
@@ -99,16 +99,16 @@ export const FLOWS: FlowDef[] = [
     id: "f3",
     code: "F3",
     name: "Sin idea clara · Asesoría",
-    desc: "ANOVA sugiere estilos/zonas u ofrece asesoría presencial gratis.",
+    desc: "NOVA sugiere estilos/zonas u ofrece asesoría presencial gratis.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "no sé qué · algo bonito · ayúdame" },
       { id: "m1", kind: "message", x: X[1], y: 180, title: "Normaliza", text: "Para eso somos perfectos 🖤 ¿Lo imaginas visible o íntimo? ¿Te llama lo minimalista o algo con presencia? ✨" },
-      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "ANOVA · Sugiere estilo", text: "Según respuestas y tendencias propone 2–3 estilos y zonas que favorecen." },
+      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "NOVA · Sugiere estilo", text: "Según respuestas y tendencias propone 2–3 estilos y zonas que favorecen." },
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "Camino", options: ["Muéstrame estilos", "Asesoría presencial", "Tengo dudas sueltas"] },
       { id: "m2", kind: "message", x: X[4], y: 60, title: "Estilos sugeridos", text: "Línea fina, dark work o neo-tribal te quedarían divinos. Te paso ejemplos del portafolio 👑" },
       { id: "h1", kind: "handoff", x: X[4], y: 200, title: "→ F5 (asesoría gratis)", text: "" },
-      { id: "ai2", kind: "ai", x: X[4], y: 340, title: "ANOVA · Resuelve dudas", text: "Responde dudas abiertas en voz de Ana y cierra invitando a agendar." },
+      { id: "ai2", kind: "ai", x: X[4], y: 340, title: "NOVA · Resuelve dudas", text: "Responde dudas abiertas en voz de Ana y cierra invitando a agendar." },
     ],
     edges: [
       { from: "t", to: "m1" },
@@ -124,7 +124,7 @@ export const FLOWS: FlowDef[] = [
     id: "f4",
     code: "F4",
     name: "Proceso y Cuidados",
-    desc: "FAQ: dolor, cuidados, freehand, duración; ANOVA cubre lo demás.",
+    desc: "FAQ: dolor, cuidados, freehand, duración; NOVA cubre lo demás.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 210, title: "Disparador", text: "duele · cuidados · freehand · cuánto dura · sangra" },
@@ -133,7 +133,7 @@ export const FLOWS: FlowDef[] = [
       { id: "m2", kind: "message", x: X[2], y: 150, title: "Cuidados", text: "Jabón neutro 2x/día, crema sin fragancia, nada de sol/piscina ~4 semanas 🤍" },
       { id: "m3", kind: "message", x: X[2], y: 270, title: "Freehand", text: "Se dibuja a mano alzada sobre tu piel; solo se tatúa cuando apruebas el trazo ✨" },
       { id: "m4", kind: "message", x: X[2], y: 390, title: "Duración", text: "Depende del tamaño y detalle; en la asesoría te damos el tiempo exacto 👑" },
-      { id: "ai1", kind: "ai", x: X[3], y: 380, title: "ANOVA · Otra duda", text: "Cualquier pregunta fuera de lista la responde ANOVA con la info del estudio." },
+      { id: "ai1", kind: "ai", x: X[3], y: 380, title: "NOVA · Otra duda", text: "Cualquier pregunta fuera de lista la responde NOVA con la info del estudio." },
       { id: "m5", kind: "message", x: X[4], y: 210, title: "Reencauza", text: "¿Te ayudo a agendar tu Pieza o tu asesoría? 🖤" },
       { id: "h1", kind: "handoff", x: X[5], y: 210, title: "→ F5 Agendamiento", text: "" },
     ],
@@ -156,7 +156,7 @@ export const FLOWS: FlowDef[] = [
     id: "f5",
     code: "F5",
     name: "Agendamiento y Abono",
-    desc: "Tipo de cita → abono → evento en Calendar → recordatorios ANOVA.",
+    desc: "Tipo de cita → abono → evento en Calendar → recordatorios NOVA.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 200, title: "Disparador", text: "agendar · cita · abono · reservar" },
@@ -165,7 +165,7 @@ export const FLOWS: FlowDef[] = [
       { id: "m2", kind: "message", x: X[2], y: 280, title: "Datos de abono", text: "Abono $100.000 (se descuenta). Nequi/Daviplata 3227062595 — LAST RULES. Mándame el comprobante 🖤" },
       { id: "a1", kind: "action", x: X[3], y: 200, title: "Crea evento", text: "Google Calendar (Maestro) + estado = Agendando" },
       { id: "a2", kind: "action", x: X[3], y: 360, title: "Notifica al Maestro", text: "Push/WhatsApp interno al tatuador asignado." },
-      { id: "ai1", kind: "ai", x: X[4], y: 200, title: "ANOVA · Recordatorios", text: "Programa recordatorio 24h y 2h antes; confirma o reagenda automático." },
+      { id: "ai1", kind: "ai", x: X[4], y: 200, title: "NOVA · Recordatorios", text: "Programa recordatorio 24h y 2h antes; confirma o reagenda automático." },
       { id: "m3", kind: "message", x: X[5], y: 200, title: "Confirmación", text: "¡Listo! Quedó tu cupo 👑 Te llega recordatorio. Cualquier cambio, escríbeme." },
     ],
     edges: [
@@ -183,11 +183,11 @@ export const FLOWS: FlowDef[] = [
     id: "f6",
     code: "F6",
     name: "Exterior / Giras",
-    desc: "ANOVA detecta ciudad/país y propone viaje a Bogotá o lista de gira.",
+    desc: "NOVA detecta ciudad/país y propone viaje a Bogotá o lista de gira.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "otra ciudad · exterior · USA · vienen a" },
-      { id: "ai1", kind: "ai", x: X[1], y: 180, title: "ANOVA · Geo", text: "Detecta ciudad/país y propone viaje a Bogotá o lista de gira." },
+      { id: "ai1", kind: "ai", x: X[1], y: 180, title: "NOVA · Geo", text: "Detecta ciudad/país y propone viaje a Bogotá o lista de gira." },
       { id: "c1", kind: "choice", x: X[2], y: 180, title: "¿Cómo prefiere?", options: ["Viajo a Bogotá", "Que vengan (gira)"] },
       { id: "m1", kind: "message", x: X[3], y: 70, title: "Viaje", text: "Agrupamos varios días para tu Pieza. Agendemos con anticipación 👑" },
       { id: "m2", kind: "message", x: X[3], y: 290, title: "Gira", text: "Te dejo en la lista prioritaria de tu ciudad; coordina el director artístico 🖤" },
@@ -207,12 +207,12 @@ export const FLOWS: FlowDef[] = [
     id: "f7",
     code: "F7",
     name: "Objeción de Precio",
-    desc: "Valida, explica valor, ANOVA reencuadra; NUNCA descuenta.",
+    desc: "Valida, explica valor, NOVA reencuadra; NUNCA descuenta.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "caro · descuento · rebaja · barato" },
       { id: "m1", kind: "message", x: X[1], y: 180, title: "Valida + valor", text: "Te entiendo 🤍 Es arte de autor a mano alzada hecho para tu anatomía; por eso no hay descuentos. Pero ajustamos alcance a tu presupuesto." },
-      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "ANOVA · Reencuadre", text: "Detecta presupuesto y propone tamaño/zona/etapas sin tocar el precio." },
+      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "NOVA · Reencuadre", text: "Detecta presupuesto y propone tamaño/zona/etapas sin tocar el precio." },
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "Respuesta", options: ["Ajustar tamaño", "Hacerlo por etapas", "Insiste en descuento"] },
       { id: "m2", kind: "message", x: X[4], y: 50, title: "Ajuste", text: "Lo llevamos a un tamaño que te cuadre y queda igual de poderoso 👑" },
       { id: "m3", kind: "message", x: X[4], y: 180, title: "Por etapas", text: "Arrancamos una primera etapa y crecemos la Obra por sesiones ✨" },
@@ -234,13 +234,13 @@ export const FLOWS: FlowDef[] = [
     id: "f8",
     code: "F8",
     name: "Seguimiento · Reactivación",
-    desc: "Recordatorios, cuidados 48h y ANOVA reactiva inactivos.",
+    desc: "Recordatorios, cuidados 48h y NOVA reactiva inactivos.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 200, title: "Disparador", text: "post-sesión · retoque · cuidado · gracias · recordar" },
       { id: "m1", kind: "message", x: X[1], y: 70, title: "Recordatorio 24h", text: "¡Mañana es tu día! Llega alimentado/a y con la zona hidratada 🖤" },
       { id: "m2", kind: "message", x: X[1], y: 210, title: "Cuidados 48h", text: "Tu Obra quedó increíble ✨ Jabón neutro, crema sin fragancia, sin sol/piscina." },
-      { id: "ai1", kind: "ai", x: X[2], y: 350, title: "ANOVA · Reactiva", text: "Detecta clientes inactivos y propone nueva Pieza o retoque en buen momento." },
+      { id: "ai1", kind: "ai", x: X[2], y: 350, title: "NOVA · Reactiva", text: "Detecta clientes inactivos y propone nueva Pieza o retoque en buen momento." },
       { id: "c1", kind: "choice", x: X[3], y: 210, title: "Reactivar", options: ["Quiere otra Pieza", "Retoque", "Solo gracias"] },
       { id: "h1", kind: "handoff", x: X[4], y: 80, title: "→ F2 Cotización", text: "" },
       { id: "m3", kind: "message", x: X[4], y: 220, title: "Retoque", text: "Tu retoque de cortesía está dentro de los 30 días 🤍 ¿Qué día vienes?" },
@@ -260,12 +260,12 @@ export const FLOWS: FlowDef[] = [
     id: "f9",
     code: "F9",
     name: "Menores de edad",
-    desc: "ANOVA verifica edad; solo con acompañamiento legal del acudiente.",
+    desc: "NOVA verifica edad; solo con acompañamiento legal del acudiente.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "tengo 16 · soy menor · desde qué edad" },
       { id: "m1", kind: "message", x: X[1], y: 180, title: "Política", text: "Gracias por preguntarlo 🖤 Para tatuar a un menor necesitamos acompañamiento legal del acudiente (presente y con autorización)." },
-      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "ANOVA · Verifica edad", text: "Si declara ser menor, bloquea agendamiento directo y exige acudiente." },
+      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "NOVA · Verifica edad", text: "Si declara ser menor, bloquea agendamiento directo y exige acudiente." },
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "¿Tiene acudiente?", options: ["Sí, puede acompañarme", "No por ahora"] },
       { id: "h1", kind: "handoff", x: X[4], y: 70, title: "→ director artístico", text: "Coordina con acudiente y documentación." },
       { id: "m2", kind: "message", x: X[4], y: 290, title: "Puerta abierta", text: "Cuando llegue tu momento, aquí estaremos ✨" },
@@ -282,11 +282,11 @@ export const FLOWS: FlowDef[] = [
     id: "f10",
     code: "F10",
     name: "Reclamo · Escalar",
-    desc: "ANOVA detecta sentimiento, empatiza y escala al director artístico.",
+    desc: "NOVA detecta sentimiento, empatiza y escala al director artístico.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "no me gustó · quedó mal · reclamo" },
-      { id: "ai1", kind: "ai", x: X[1], y: 180, title: "ANOVA · Sentimiento", text: "Detecta molestia/urgencia y baja la temperatura antes de responder." },
+      { id: "ai1", kind: "ai", x: X[1], y: 180, title: "NOVA · Sentimiento", text: "Detecta molestia/urgencia y baja la temperatura antes de responder." },
       { id: "m1", kind: "message", x: X[2], y: 180, title: "Empatía", text: "Lamento mucho que no estés satisfecho con tu Pieza 🖤 Quiero que quedes feliz." },
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "Tipo", options: ["Resultado / retoque", "Atención / servicio"] },
       { id: "h1", kind: "handoff", x: X[4], y: 70, title: "→ director artístico", text: "Te conecto con el director artístico; te escribe en breve 🤍" },
@@ -304,11 +304,11 @@ export const FLOWS: FlowDef[] = [
     id: "f11",
     code: "F11",
     name: "Catálogo · Estilos & Portafolio",
-    desc: "Muestra estilos, Maestros y portafolio; ANOVA afina por gusto.",
+    desc: "Muestra estilos, Maestros y portafolio; NOVA afina por gusto.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 210, title: "Disparador", text: "portafolio · estilos · trabajos · fotos · tatuadores" },
-      { id: "ai1", kind: "ai", x: X[1], y: 210, title: "ANOVA · Gusto", text: "Pregunta gusto y muestra el set de fotos/estilos más afín." },
+      { id: "ai1", kind: "ai", x: X[1], y: 210, title: "NOVA · Gusto", text: "Pregunta gusto y muestra el set de fotos/estilos más afín." },
       { id: "c1", kind: "choice", x: X[2], y: 210, title: "¿Qué te late?", options: ["Línea fina", "Dark work", "Neo-tribal", "Ver Maestros"] },
       { id: "m1", kind: "message", x: X[3], y: 40, title: "Línea fina", text: "Trazos delicados y elegantes 🤍 Te paso ejemplos." },
       { id: "m2", kind: "message", x: X[3], y: 150, title: "Dark work", text: "Negros sólidos con presencia 🖤 Mira estas Obras." },
@@ -334,14 +334,14 @@ export const FLOWS: FlowDef[] = [
   {
     id: "f12",
     code: "F12",
-    name: "ANOVA · Cerebro / Fallback",
+    name: "NOVA · Cerebro / Fallback",
     desc: "IA siempre activa: responde lo que ningún flujo cubre, escala y aprende.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 200, title: "Mensaje sin flujo", text: "Cualquier texto que no dispare F1–F11" },
-      { id: "ai1", kind: "ai", x: X[1], y: 200, title: "ANOVA · Comprende", text: "Interpreta intención con el contexto del lead y la base de conocimiento." },
+      { id: "ai1", kind: "ai", x: X[1], y: 200, title: "NOVA · Comprende", text: "Interpreta intención con el contexto del lead y la base de conocimiento." },
       { id: "c1", kind: "choice", x: X[2], y: 200, title: "¿Puede resolver?", options: ["Sí, responde", "Necesita humano", "Es comercial"] },
-      { id: "ai2", kind: "ai", x: X[3], y: 60, title: "ANOVA · Responde", text: "Genera respuesta en voz de Ana, sin precio ni descuento, y reencauza." },
+      { id: "ai2", kind: "ai", x: X[3], y: 60, title: "NOVA · Responde", text: "Genera respuesta en voz de Ana, sin precio ni descuento, y reencauza." },
       { id: "h1", kind: "handoff", x: X[3], y: 200, title: "→ director artístico", text: "Escala a humano con resumen del caso." },
       { id: "h2", kind: "handoff", x: X[3], y: 340, title: "→ F2 Cotización", text: "Si hay intención de compra, cierra." },
       { id: "a1", kind: "action", x: X[4], y: 60, title: "Aprende", text: "Guarda la pregunta nueva para enriquecer la base." },
@@ -359,7 +359,7 @@ export const FLOWS: FlowDef[] = [
     id: "f13",
     code: "F13",
     name: "Comentarios → DM (IG/FB)",
-    desc: "Comentario en publicación → responde público + abre DM. Predefinido por palabra clave; ANOVA solo si es charla real.",
+    desc: "Comentario en publicación → responde público + abre DM. Predefinido por palabra clave; NOVA solo si es charla real.",
     channel: "instagram",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 220, title: "Comentario en post", text: "precio · info · cuánto · link · 🔥 · 😍 · «quiero»" },
@@ -369,7 +369,7 @@ export const FLOWS: FlowDef[] = [
       { id: "m1", kind: "message", x: X[3], y: 60, title: "DM precio · predefinida", text: "Hola 🖤 vi tu comentario. ¿Qué Pieza imaginas y en qué zona? Te asesoro ✨" },
       { id: "m2", kind: "message", x: X[3], y: 190, title: "DM emoji · predefinida", text: "¡Gracias por el 🔥! ¿Quieres ver más Obras o agendamos? 👑" },
       { id: "m3", kind: "message", x: X[3], y: 320, title: "DM etiqueta · predefinida", text: "¡Qué buena! Si tú o tu amig@ quieren su Pieza, aquí estamos 🤍" },
-      { id: "ai1", kind: "ai", x: X[3], y: 450, title: "ANOVA · DM (IA)", text: "Pregunta compleja → responde humano vía Claude y reencauza a agendar." },
+      { id: "ai1", kind: "ai", x: X[3], y: 450, title: "NOVA · DM (IA)", text: "Pregunta compleja → responde humano vía Claude y reencauza a agendar." },
       { id: "h1", kind: "handoff", x: X[4], y: 190, title: "→ F1 Bienvenida", text: "" },
     ],
     edges: [
@@ -398,7 +398,7 @@ export const FLOWS: FlowDef[] = [
       { id: "m1", kind: "message", x: X[2], y: 60, title: "Predefinida · amor", text: "¡Gracias por el amor! 🤍 ¿Te muestro disponibilidad para tu Pieza? 👑" },
       { id: "m2", kind: "message", x: X[2], y: 190, title: "Predefinida · fuego", text: "¡Ese fuego nos encanta! 🔥 ¿Quieres cotizar tu idea? 🖤" },
       { id: "m3", kind: "message", x: X[2], y: 320, title: "Predefinida · asombro", text: "¡Gracias! 👑 Dime qué zona del cuerpo y arrancamos ✨" },
-      { id: "ai1", kind: "ai", x: X[2], y: 450, title: "ANOVA (IA)", text: "Solo si respondió con texto real: responde humano y enruta a F1." },
+      { id: "ai1", kind: "ai", x: X[2], y: 450, title: "NOVA (IA)", text: "Solo si respondió con texto real: responde humano y enruta a F1." },
       { id: "h1", kind: "handoff", x: X[3], y: 220, title: "→ F1 Bienvenida", text: "" },
     ],
     edges: [
@@ -425,8 +425,8 @@ export const FLOWS: FlowDef[] = [
       { id: "m1", kind: "message", x: X[2], y: 60, title: "Predefinida · saludo", text: "¡Hola! 🖤 Soy Ana de LAST RULES. ¿Qué Pieza tienes en mente?" },
       { id: "m2", kind: "message", x: X[2], y: 190, title: "Predefinida · sticker", text: "🤍 ¿Te ayudo a cotizar o a agendar tu Pieza?" },
       { id: "m3", kind: "message", x: X[2], y: 320, title: "Predefinida · «?»", text: "Cuéntame un poco más y te oriento al toque ✨" },
-      { id: "a1", kind: "action", x: X[2], y: 450, title: "Transcribe audio", text: "ANOVA transcribe la nota de voz (solo si hay audio)." },
-      { id: "ai1", kind: "ai", x: X[3], y: 450, title: "ANOVA (IA)", text: "Interpreta el audio transcrito y responde humano." },
+      { id: "a1", kind: "action", x: X[2], y: 450, title: "Transcribe audio", text: "NOVA transcribe la nota de voz (solo si hay audio)." },
+      { id: "ai1", kind: "ai", x: X[3], y: 450, title: "NOVA (IA)", text: "Interpreta el audio transcrito y responde humano." },
       { id: "h1", kind: "handoff", x: X[3], y: 180, title: "→ F1 Bienvenida", text: "" },
     ],
     edges: [
@@ -446,12 +446,12 @@ export const FLOWS: FlowDef[] = [
     id: "f16",
     code: "F16",
     name: "Cover-up / Retrabajo",
-    desc: "Tapar o mejorar un tatuaje viejo: pide foto, ANOVA evalúa viabilidad, enruta a asesoría.",
+    desc: "Tapar o mejorar un tatuaje viejo: pide foto, NOVA evalúa viabilidad, enruta a asesoría.",
     channel: "all",
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 180, title: "Disparador", text: "cover · tapar · cubrir · arreglar · tatuaje viejo" },
       { id: "m1", kind: "message", x: X[1], y: 180, title: "Pide foto", text: "Claro que sí 🖤 Mándame una foto clara del tatuaje actual y la zona ✨" },
-      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "ANOVA · Evalúa", text: "Lee la foto, estima si se cubre o necesita aclarado/láser previo y propone estilo." },
+      { id: "ai1", kind: "ai", x: X[2], y: 180, title: "NOVA · Evalúa", text: "Lee la foto, estima si se cubre o necesita aclarado/láser previo y propone estilo." },
       { id: "c1", kind: "choice", x: X[3], y: 180, title: "Viabilidad", options: ["Se puede cubrir", "Necesita aclarado/láser"] },
       { id: "m2", kind: "message", x: X[4], y: 80, title: "Cover viable", text: "¡Buenas noticias! Se puede transformar en una Obra nueva 👑 Agendemos asesoría." },
       { id: "m3", kind: "message", x: X[4], y: 280, title: "Requiere láser", text: "Para que quede impecable conviene aclararlo antes 🤍 Te explico el proceso en asesoría." },
@@ -546,7 +546,7 @@ export const FLOWS: FlowDef[] = [
       { id: "m1", kind: "message", x: X[2], y: 60, title: "Tipos", text: "Hacemos oreja, nariz, cuerpo y más, con técnica estéril 🖤 ¿Cuál te llama?" },
       { id: "m2", kind: "message", x: X[2], y: 190, title: "Joyería", text: "Trabajamos titanio implant-grade y oro 👑 hipoalergénico y elegante ✨" },
       { id: "m3", kind: "message", x: X[2], y: 320, title: "Cuidados", text: "Suero fisiológico 2x/día, no girar la joya, evitar piscina las primeras semanas 🤍" },
-      { id: "ai1", kind: "ai", x: X[3], y: 320, title: "ANOVA · Dudas", text: "Resuelve dudas específicas de piercing y reencauza a agendar." },
+      { id: "ai1", kind: "ai", x: X[3], y: 320, title: "NOVA · Dudas", text: "Resuelve dudas específicas de piercing y reencauza a agendar." },
       { id: "h1", kind: "handoff", x: X[3], y: 120, title: "→ F5 Agendamiento", text: "" },
     ],
     edges: [

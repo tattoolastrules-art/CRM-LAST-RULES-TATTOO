@@ -1,4 +1,4 @@
-// ANOVA: decide la respuesta automática a un mensaje entrante.
+// NOVA: decide la respuesta automática a un mensaje entrante.
 // Regla de costo: saludos/mensajes triviales → respuesta PREDEFINIDA (sin tokens);
 // conversación real → Claude con la voz comercial de Ana.
 

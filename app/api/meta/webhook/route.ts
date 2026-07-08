@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     if (lead) {
       if (lead.origen === "whatsapp") {
         await upsertLeadByContact(lead);
-        // ANOVA responde automáticamente (interruptor en el OS: Reservas → ANOVA)
+        // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
