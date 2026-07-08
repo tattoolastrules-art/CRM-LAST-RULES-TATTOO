@@ -8,8 +8,16 @@ import { buildSystemPrompt } from "./lana-prompt";
 const GREETING =
   /^(hola+|buenas+|buenos dias|buenas tardes|buenas noches|hey|holi+|hello|hi|info|informacion|información|precio|leido|leído|ok|listo)[\s!.,?¡¿]*$/i;
 
-export const WELCOME =
-  "Hola, qué gusto saludarte 🖤 Soy Lana, de LAST RULES — El Templo de la Piel. ¿Qué Pieza tienes en mente y en qué zona la imaginas? ✨";
+// Bienvenidas humanas (se rota una al azar para no sonar robótico)
+const WELCOMES = [
+  "¡Hola! Qué bueno que escribes 🖤 Soy Lana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?",
+  "¡Hey, bienvenid@ a Last Rules! 🖤 Soy Lana. Dime, ¿qué tienes en mente? ¿algo delicado, algo con presencia…? ✨",
+  "¡Hola! Soy Lana, de Last Rules 🤍 Me encanta que estés aquí. ¿Qué idea traes en la cabeza para tu piel?",
+];
+export const WELCOME = WELCOMES[0];
+export function randomWelcome() {
+  return WELCOMES[Math.floor(Math.random() * WELCOMES.length)];
+}
 
 export async function anovaReply(
   text: string,
@@ -17,9 +25,9 @@ export async function anovaReply(
 ): Promise<{ reply: string; mode: "predefinida" | "anova" }> {
   const t = (text || "").trim();
   if (!t || t.length < 2 || GREETING.test(t) || t.startsWith("[")) {
-    return { reply: WELCOME, mode: "predefinida" };
+    return { reply: randomWelcome(), mode: "predefinida" };
   }
-  if (!process.env.ANTHROPIC_API_KEY) return { reply: WELCOME, mode: "predefinida" };
+  if (!process.env.ANTHROPIC_API_KEY) return { reply: randomWelcome(), mode: "predefinida" };
 
   const client = new Anthropic();
   const system =
@@ -36,5 +44,5 @@ export async function anovaReply(
     .map((b) => (b as { text: string }).text)
     .join("")
     .trim();
-  return { reply: reply || WELCOME, mode: "anova" };
+  return { reply: reply || randomWelcome(), mode: "anova" };
 }

@@ -9,6 +9,10 @@ import {
   Globe,
   Users,
   Inbox,
+  Megaphone,
+  Monitor,
+  Moon,
+  Sun,
   LogOut,
 } from "lucide-react";
 import { Logo } from "./Logo";
@@ -19,9 +23,16 @@ import Agenda from "./Agenda";
 import SiteAdmin from "./SiteAdmin";
 import UsersAdmin from "./UsersAdmin";
 import ReservasAdmin from "./ReservasAdmin";
+import Planner from "./Planner";
 import Login from "./Login";
 
-type View = "flujos" | "omni" | "crm" | "reservas" | "agenda" | "sitio" | "usuarios";
+type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "usuarios";
+type Theme = "normal" | "dark" | "light";
+const THEME_META: Record<Theme, { Icon: typeof Monitor; label: string }> = {
+  normal: { Icon: Monitor, label: "Normal" },
+  dark: { Icon: Moon, label: "Oscuro" },
+  light: { Icon: Sun, label: "Claro" },
+};
 type AuthUser = { email: string; role: string; name: string } | null;
 
 const ITEMS = [
@@ -29,6 +40,7 @@ const ITEMS = [
   { id: "omni" as const, label: "Omnicanal", Icon: MessageCircleMore },
   { id: "crm" as const, label: "CRM", Icon: LayoutDashboard },
   { id: "reservas" as const, label: "Reservas", Icon: Inbox },
+  { id: "planner" as const, label: "Planner", Icon: Megaphone },
   { id: "agenda" as const, label: "Agenda", Icon: CalendarDays },
   { id: "sitio" as const, label: "Sitio", Icon: Globe },
   { id: "usuarios" as const, label: "Usuarios", Icon: Users },
@@ -39,6 +51,26 @@ export default function AppShell() {
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
   const [nuevas, setNuevas] = useState(0);
+  const [theme, setTheme] = useState<Theme>("normal");
+
+  useEffect(() => {
+    const saved = (localStorage.getItem("lr_theme") as Theme) || "normal";
+    setTheme(saved);
+    applyTheme(saved);
+  }, []);
+
+  function applyTheme(t: Theme) {
+    if (t === "normal") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = t;
+  }
+
+  function cycleTheme() {
+    const order: Theme[] = ["normal", "dark", "light"];
+    const next = order[(order.indexOf(theme) + 1) % order.length];
+    setTheme(next);
+    localStorage.setItem("lr_theme", next);
+    applyTheme(next);
+  }
 
   useEffect(() => {
     fetch("/api/auth")
@@ -71,7 +103,7 @@ export default function AppShell() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <nav className="flex w-[78px] shrink-0 flex-col items-center gap-1 border-r border-line/60 bg-[#0d1320] py-4">
+      <nav className="flex w-[78px] shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-line/60 bg-navy-soft py-4">
         <div className="mb-4">
           <Logo size={42} />
         </div>
@@ -91,9 +123,17 @@ export default function AppShell() {
           </button>
         ))}
         <button
+          onClick={cycleTheme}
+          title={"Tema: " + THEME_META[theme].label + " (clic para cambiar)"}
+          className="mt-auto flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 text-bone-dim transition hover:bg-white/5 hover:text-bone"
+        >
+          {(() => { const I = THEME_META[theme].Icon; return <I size={18} />; })()}
+          <span className="text-[10px] font-medium">{THEME_META[theme].label}</span>
+        </button>
+        <button
           onClick={logout}
           title={"Salir · " + user.name}
-          className="mt-auto flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 text-bone-dim transition hover:bg-white/5 hover:text-bone"
+          className="flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 text-bone-dim transition hover:bg-white/5 hover:text-bone"
         >
           <LogOut size={18} />
           <span className="text-[10px] font-medium">Salir</span>
@@ -112,6 +152,7 @@ export default function AppShell() {
         {current === "omni" && <OmniInbox />}
         {current === "crm" && <CrmDashboard />}
         {current === "reservas" && <ReservasAdmin />}
+        {current === "planner" && <Planner />}
         {current === "agenda" && <Agenda />}
         {current === "sitio" && <SiteAdmin />}
         {current === "usuarios" && isAdmin && <UsersAdmin />}

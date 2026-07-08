@@ -40,7 +40,7 @@ const SEED: SiteContent = {
     ciudad: "Bogotá, Colombia",
     direccion: "El Templo · Bogotá (cita previa)",
     horario: "Mar – Sáb · 11:00 am – 8:00 pm",
-    whatsapp: "573227062595",
+    whatsapp: "573204530194",
     instagram: "@lastrules",
     portada: "",
   },

@@ -9,7 +9,7 @@ const LINKS: [string, string][] = [
   ["/tatuadores", "Tatuadores"],
 ];
 
-const WA = "573227062595";
+const WA = "573204530194";
 
 export function Thumb({ url, alt, h = "h-52" }: { url?: string; alt: string; h?: string }) {
   if (url)

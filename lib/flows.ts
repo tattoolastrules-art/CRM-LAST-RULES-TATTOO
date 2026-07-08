@@ -47,7 +47,7 @@ export const FLOWS: FlowDef[] = [
     nodes: [
       { id: "t", kind: "trigger", x: X[0], y: 160, title: "Disparador", text: "hola · buenas · info · precio · tatu 👋" },
       { id: "ai1", kind: "ai", x: X[1], y: 160, title: "ANOVA · Intención", text: "Clasifica el 1er mensaje (saludo/idea/precio/ubicación/reclamo) y enruta." },
-      { id: "m1", kind: "message", x: X[2], y: 160, title: "Saludo Lana", text: "Hola, qué gusto saludarte 🖤 Soy Lana, de LAST RULES — El Templo de la Piel. ¿Qué Pieza sueñas y en qué zona la imaginas? ✨" },
+      { id: "m1", kind: "message", x: X[2], y: 160, title: "Saludo Lana", text: "¡Hola! Qué bueno que escribes 🖤 Soy Lana, de Last Rules. Cuéntame… ¿ya tienes clara la idea o andas buscando inspiración?" },
       { id: "c1", kind: "choice", x: X[3], y: 150, title: "¿Cómo viene?", options: ["Ya sé qué quiero", "Idea vaga", "¿Cuánto cuesta?", "Ubicación / horario"] },
       { id: "h1", kind: "handoff", x: X[4], y: 20, title: "→ F2 Cotización", text: "Recoge idea/zona/tamaño." },
       { id: "h2", kind: "handoff", x: X[4], y: 150, title: "→ F3 Asesoría", text: "Orienta o agenda asesoría." },
