@@ -62,7 +62,7 @@ export default function FlowBuilder() {
 
   return (
     <div className="flex h-full">
-      <aside className="w-56 shrink-0 overflow-y-auto border-r border-line/60 p-2">
+      <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-line/60 p-2 md:block">
         <div className="px-2 pb-2 pt-1 text-[10px] uppercase tracking-widest text-bone-dim">
           Flujos ({FLOWS.length})
         </div>
@@ -91,13 +91,25 @@ export default function FlowBuilder() {
         ))}
       </aside>
 
-      <div className="relative flex-1">
-        <div className="pointer-events-none absolute left-4 top-3 z-10">
-          <div className="font-display text-bone">
-            {flow.code} · {flow.name}
-          </div>
-          <div className="text-[11px] text-bone-dim">{flow.desc}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Barra del flujo activo (fuera del lienzo: ya no se cruza con los nodos) */}
+        <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line/60 bg-navy-soft/70 px-3 py-2 backdrop-blur">
+          {/* Selector en celular (la lista lateral se oculta) */}
+          <select
+            value={activeId}
+            onChange={(e) => setActiveId(e.target.value)}
+            className="max-w-[60vw] rounded-lg border border-line bg-navy-card px-2 py-1 text-xs text-bone outline-none md:hidden"
+          >
+            {FLOWS.map((f) => (
+              <option key={f.id} value={f.id}>{f.code} · {f.name}</option>
+            ))}
+          </select>
+          <span className="hidden rounded bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold md:inline">{flow.code}</span>
+          <span className="hidden truncate font-display text-sm text-bone md:inline">{flow.name}</span>
+          <span className="hidden min-w-0 truncate text-[11px] text-bone-dim lg:inline">· {flow.desc}</span>
         </div>
+
+        <div className="relative min-h-0 flex-1">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -116,12 +128,13 @@ export default function FlowBuilder() {
           <MiniMap
             pannable
             zoomable
-            className="!bg-[#0f1522]"
+            className="!hidden !bg-[#0f1522] sm:!block"
             maskColor="rgba(15,21,34,0.7)"
             nodeColor="#C5A059"
           />
           <Controls showInteractive={false} className="!border-line !bg-[#1b2336]" />
         </ReactFlow>
+        </div>
       </div>
     </div>
   );
