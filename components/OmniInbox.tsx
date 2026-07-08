@@ -49,6 +49,7 @@ function mapReal(list: Array<Record<string, unknown>>): Item[] {
       id: m.id,
       at: m.at,
       text: m.text,
+      img: m.img,
       sender: m.sender === "coleccionista" ? "coleccionista" : m.sender === "equipo" ? "maestro" : "lana",
     })),
     real: true,
@@ -174,9 +175,17 @@ export default function OmniInbox() {
     setSending(true);
     try {
       const blob = await resizeImage(f);
+      // miniatura para verla en el chat del panel
+      const thumbBlob = await resizeImage(f, 340, 0.6);
+      const thumb: string = await new Promise((res) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result || ""));
+        fr.readAsDataURL(thumbBlob);
+      });
       const fd = new FormData();
       fd.append("file", blob, "foto.jpg");
       fd.append("contacto", selected.id.slice(2));
+      fd.append("thumb", thumb);
       if (draft.trim()) fd.append("caption", draft.trim());
       const r = await fetch("/api/convos", { method: "POST", body: fd });
       const d = await r.json();
@@ -357,6 +366,15 @@ export default function OmniInbox() {
                     <div className="mb-0.5 text-[10px] font-semibold text-[#00a884]">
                       Los Maestros
                     </div>
+                  )}
+                  {(m as Message & { img?: string }).img && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={(m as Message & { img?: string }).img}
+                      alt="foto"
+                      className="mb-1 max-h-56 w-full cursor-pointer rounded-md object-cover"
+                      onClick={() => window.open((m as Message & { img?: string }).img, "_blank")}
+                    />
                   )}
                   {m.text}
                   <span className="ml-2 align-bottom text-[9px] text-white/40">

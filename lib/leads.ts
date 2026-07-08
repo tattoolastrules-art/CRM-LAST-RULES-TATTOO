@@ -8,6 +8,7 @@ export interface Lead {
   id: string; nombre: string; contacto: string; servicio: string;
   presupuesto: string; idea: string; fecha: string; estado: string; origen: string;
   notas: string; maestro: string; fechaCita: string;
+  seguimientos?: Record<string, string>; // pasos de seguimiento ya enviados
 }
 
 const s = (v: unknown, n: number) => String(v ?? "").slice(0, n);

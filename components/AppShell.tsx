@@ -15,9 +15,12 @@ import {
   Sun,
   Cog,
   X,
+  Bell,
+  BellOff,
   LogOut,
 } from "lucide-react";
 import SistemaAdmin from "./SistemaAdmin";
+import BootSequence from "./BootSequence";
 import { Logo } from "./Logo";
 import FlowBuilder from "./FlowBuilder";
 import OmniInbox from "./OmniInbox";
@@ -98,6 +101,48 @@ export default function AppShell() {
   const [mods, setMods] = useState<Record<string, boolean> | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [hintShown, setHintShown] = useState<Record<string, boolean>>({});
+  const [pushOn, setPushOn] = useState(false);
+  const [booting, setBooting] = useState(false);
+
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("lr_push") === "on") {
+      setPushOn(true);
+    }
+    if (!sessionStorage.getItem("lr_boot")) setBooting(true);
+  }, []);
+
+  // Notificaciones de ESTE dispositivo (cada quien las activa donde quiera)
+  async function togglePush() {
+    try {
+      if (pushOn) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        if (sub) {
+          await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "unsubscribe", endpoint: sub.endpoint }) });
+          await sub.unsubscribe();
+        }
+        localStorage.setItem("lr_push", "off");
+        setPushOn(false);
+        return;
+      }
+      if (!("serviceWorker" in navigator) || typeof Notification === "undefined") {
+        alert("Este navegador no soporta notificaciones. En iPhone: instala primero la app (Compartir → Añadir a pantalla de inicio).");
+        return;
+      }
+      const d = await (await fetch("/api/push")).json();
+      if (!d.publicKey) { alert("Faltan las llaves VAPID en Vercel (avísale a PRODY-G)."); return; }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") return;
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: d.publicKey });
+      await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "subscribe", sub: sub.toJSON() }) });
+      localStorage.setItem("lr_push", "on");
+      setPushOn(true);
+      new Notification("Last Rules OS 🖤", { body: "Notificaciones activadas en este dispositivo", icon: "/icon-192.png" });
+    } catch {
+      alert("No se pudieron activar las notificaciones en este dispositivo.");
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -111,16 +156,17 @@ export default function AppShell() {
       .catch(() => {});
   }, [user]);
 
-  // La insinuación aparece tras un rato de estar usando ese módulo (una vez por sesión)
+  // La insinuación aparece tras un buen rato en el módulo, desaparece sola en
+  // segundos y máximo salen 2 por sesión (para no cansar)
   useEffect(() => {
     if (!user) return;
     const text = HINTS[view];
-    if (!text || hintShown[view]) return;
+    if (!text || hintShown[view] || Object.keys(hintShown).length >= 2) return;
     const show = setTimeout(() => {
       setHint(text);
       setHintShown((p) => ({ ...p, [view]: true }));
-    }, 12000);
-    const hide = setTimeout(() => setHint(null), 34000);
+    }, 40000);
+    const hide = setTimeout(() => setHint(null), 49000);
     return () => { clearTimeout(show); clearTimeout(hide); };
   }, [view, user, hintShown]);
 
@@ -132,6 +178,7 @@ export default function AppShell() {
 
   if (loading) return <div className="flex h-screen w-screen items-center justify-center bg-navy text-bone-dim">…</div>;
   if (!user) return <Login onLogin={setUser} />;
+  if (booting) return <BootSequence userName={user.name} onDone={() => { sessionStorage.setItem("lr_boot", "1"); setBooting(false); }} />;
 
   const isAdmin = user.role === "admin";
   const base = ITEMS.filter((it) => {
@@ -166,9 +213,17 @@ export default function AppShell() {
           </button>
         ))}
         <button
+          onClick={togglePush}
+          title={pushOn ? "Notificaciones activas en este dispositivo (clic para apagar)" : "Activar notificaciones en este dispositivo"}
+          className={`ml-auto flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition hover:bg-white/5 sm:ml-0 sm:mt-auto sm:w-[62px] sm:gap-1 sm:py-2.5 ${pushOn ? "text-gold" : "text-bone-dim hover:text-bone"}`}
+        >
+          {pushOn ? <Bell size={18} /> : <BellOff size={18} />}
+          <span className="text-[10px] font-medium">Avisos</span>
+        </button>
+        <button
           onClick={cycleTheme}
           title={"Tema: " + THEME_META[theme].label + " (clic para cambiar)"}
-          className="ml-auto flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 text-bone-dim transition hover:bg-white/5 hover:text-bone sm:ml-0 sm:mt-auto sm:w-[62px] sm:gap-1 sm:py-2.5"
+          className="flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 text-bone-dim transition hover:bg-white/5 hover:text-bone sm:w-[62px] sm:gap-1 sm:py-2.5"
         >
           {(() => { const I = THEME_META[theme].Icon; return <I size={18} />; })()}
           <span className="text-[10px] font-medium">{THEME_META[theme].label}</span>

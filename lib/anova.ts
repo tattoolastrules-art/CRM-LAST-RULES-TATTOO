@@ -5,6 +5,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./lana-prompt";
 import { matchFlow, flowText, styleGuide } from "./flow-engine";
+import { getFollowConfig } from "./followups";
+
+const RATING = /^\s*([1-5])\s*(estrellas?|⭐+)?\s*$/i;
 
 const GREETING =
   /^(hola+|buenas+|buenos dias|buenas tardes|buenas noches|hey|holi+|hello|hi|info|informacion|información|precio|leido|leído|ok|listo)[\s!.,?¡¿]*$/i;
@@ -97,6 +100,24 @@ export async function anovaReply(
   name: string,
 ): Promise<{ reply: string; mode: "predefinida" | "anova" }> {
   const t = (text || "").trim();
+
+  // Respuesta a la encuesta de satisfacción (1–5): los felices van a Google ⭐
+  const rm = t.match(RATING);
+  if (rm) {
+    const n = parseInt(rm[1], 10);
+    const link = (await getFollowConfig().catch(() => null))?.reviewLink || "";
+    if (n >= 4) {
+      return {
+        reply: `¡Nos alegra muchísimo! 🖤 ¿Nos regalas esas ${n === 5 ? "5 estrellas" : "estrellas"} en Google? Nos ayuda un montón a que más Coleccionistas nos encuentren: ${link} ✨`.trim(),
+        mode: "predefinida",
+      };
+    }
+    return {
+      reply: "Gracias por la sinceridad 🤍 Queremos que quedes 100% feliz con tu Pieza. Ya mismo le paso tu caso al director artístico para revisarlo personalmente — te escribimos hoy.",
+      mode: "predefinida",
+    };
+  }
+
   if (!t || t.length < 2 || GREETING.test(t) || t.startsWith("[")) {
     // Bienvenida: usa el saludo del flujo F1 (editable desde el OS) si existe
     const w = await flowText("f1", "m1").catch(() => "");

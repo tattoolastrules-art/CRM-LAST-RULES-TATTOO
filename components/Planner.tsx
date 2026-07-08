@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Lightbulb, Palette, CalendarClock, Rocket, GripVertical } from "lucide-react";
+import { Plus, Trash2, Lightbulb, Palette, CalendarClock, Rocket, GripVertical, LayoutGrid, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 type Campaign = { id: string; titulo: string; canal: string; fecha: string; nota: string; col: string };
 
@@ -28,6 +28,8 @@ export default function Planner() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [vista, setVista] = useState<"tablero" | "calendario">("tablero");
+  const [mes, setMes] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
   useEffect(() => {
     fetch("/api/planner").then((r) => (r.ok ? r.json() : { items: [] })).then((d) => setItems(d.items || [])).catch(() => setItems([]));
@@ -54,15 +56,50 @@ export default function Planner() {
     setOverCol(null);
   }
 
+  function dropEnDia(iso: string) {
+    if (!dragId) return;
+    const card = items?.find((x) => x.id === dragId);
+    if (card) {
+      setItems((prev) => prev && prev.map((x) => (x.id === dragId ? { ...x, fecha: iso } : x)));
+      post({ action: "upsert", item: { ...card, fecha: iso } });
+    }
+    setDragId(null);
+  }
+
   if (!items) return <div className="p-6 text-bone-dim">Cargando…</div>;
+
+  // celdas del mes (con huecos iniciales para alinear el día de la semana)
+  const primerDia = (mes.getDay() + 6) % 7; // lunes = 0
+  const diasMes = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate();
+  const celdas: (string | null)[] = [
+    ...Array.from({ length: primerDia }, () => null),
+    ...Array.from({ length: diasMes }, (_, i) => {
+      const d = new Date(mes.getFullYear(), mes.getMonth(), i + 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }),
+  ];
+  const hoyIso = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+  const sinFecha = items.filter((x) => !x.fecha);
 
   return (
     <div className="flex h-full flex-col p-5">
       {/* Header + creación rápida */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="font-display text-lg text-bone">Planificador · Marketing</div>
-          <div className="text-[11px] text-bone-dim">Escribe la idea, dale + y arrástrala entre columnas según avance.</div>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="font-display text-lg text-bone">Planificador · Marketing</div>
+            <div className="text-[11px] text-bone-dim">
+              {vista === "tablero" ? "Escribe la idea, dale + y arrástrala entre columnas según avance." : "Arrastra las campañas a su día de publicación."}
+            </div>
+          </div>
+          <div className="flex overflow-hidden rounded-lg border border-line">
+            <button onClick={() => setVista("tablero")} className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] ${vista === "tablero" ? "bg-gold/15 text-gold" : "text-bone-dim hover:text-bone"}`}>
+              <LayoutGrid size={13} /> Tablero
+            </button>
+            <button onClick={() => setVista("calendario")} className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] ${vista === "calendario" ? "bg-gold/15 text-gold" : "text-bone-dim hover:text-bone"}`}>
+              <CalendarDays size={13} /> Calendario
+            </button>
+          </div>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <input
@@ -79,8 +116,80 @@ export default function Planner() {
         </div>
       </div>
 
+      {/* Vista Calendario */}
+      {vista === "calendario" && (
+        <div className="flex flex-1 flex-col overflow-auto">
+          <div className="mb-2 flex items-center gap-3">
+            <button onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))} className="rounded-lg border border-line p-1.5 text-bone-dim hover:text-bone"><ChevronLeft size={15} /></button>
+            <div className="font-display text-sm capitalize text-bone">{mes.toLocaleDateString("es-CO", { month: "long", year: "numeric" })}</div>
+            <button onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))} className="rounded-lg border border-line p-1.5 text-bone-dim hover:text-bone"><ChevronRight size={15} /></button>
+          </div>
+
+          {sinFecha.length > 0 && (
+            <div className="glass mb-3 rounded-xl p-2">
+              <div className="mb-1 text-[10px] uppercase tracking-widest text-bone-dim">Sin fecha · arrástralas a un día</div>
+              <div className="flex flex-wrap gap-1.5">
+                {sinFecha.map((c) => {
+                  const cn = CANALES[c.canal] || CANALES.otro;
+                  return (
+                    <span
+                      key={c.id}
+                      draggable
+                      onDragStart={() => setDragId(c.id)}
+                      onDragEnd={() => setDragId(null)}
+                      className={`cursor-grab rounded-full border px-2 py-0.5 text-[11px] active:cursor-grabbing ${dragId === c.id ? "opacity-40" : ""}`}
+                      style={{ borderColor: cn.color + "66", color: cn.color, background: cn.color + "14" }}
+                    >
+                      {c.titulo}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-1 grid grid-cols-7">
+            {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
+              <div key={d} className="text-center text-[10px] uppercase tracking-widest text-bone-dim">{d}</div>
+            ))}
+          </div>
+          <div className="glass grid flex-1 grid-cols-7 gap-px overflow-hidden rounded-xl p-1" style={{ gridAutoRows: "minmax(84px, 1fr)" }}>
+            {celdas.map((iso, i) =>
+              iso === null ? (
+                <div key={"x" + i} />
+              ) : (
+                <div
+                  key={iso}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => dropEnDia(iso)}
+                  className={`flex flex-col gap-0.5 rounded-md border p-1 transition ${iso === hoyIso ? "border-gold/50 bg-gold/5" : "border-line/30 hover:border-line/70"}`}
+                >
+                  <span className={`text-[10px] ${iso === hoyIso ? "font-bold text-gold" : "text-bone-dim"}`}>{Number(iso.slice(8))}</span>
+                  {items.filter((x) => x.fecha === iso).map((c) => {
+                    const cn = CANALES[c.canal] || CANALES.otro;
+                    return (
+                      <span
+                        key={c.id}
+                        draggable
+                        onDragStart={() => setDragId(c.id)}
+                        onDragEnd={() => setDragId(null)}
+                        title={c.titulo + (c.nota ? " — " + c.nota : "")}
+                        className="cursor-grab truncate rounded px-1 py-0.5 text-[10px] leading-tight active:cursor-grabbing"
+                        style={{ background: cn.color + "26", color: cn.color, borderLeft: `2px solid ${cn.color}` }}
+                      >
+                        {c.titulo}
+                      </span>
+                    );
+                  })}
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tablero */}
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-auto sm:grid-cols-2 xl:grid-cols-4">
+      <div className={`grid flex-1 grid-cols-1 gap-3 overflow-auto sm:grid-cols-2 xl:grid-cols-4 ${vista === "calendario" ? "hidden" : ""}`}>
         {COLS.map((c) => {
           const cards = items.filter((x) => x.col === c.id);
           return (

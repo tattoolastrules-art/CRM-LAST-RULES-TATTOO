@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
 import { getLeads, addLead, updateLead, removeLead } from "@/lib/leads";
+import { pushAll } from "@/lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Faltan datos" }, { status: 400, headers: CORS });
   }
   const lead = await addLead(body);
+  pushAll("🌐 Nueva reserva web", `${lead.nombre} · ${lead.servicio || "consulta"}`, "/os").catch(() => {});
   return Response.json({ ok: true, id: lead.id }, { headers: CORS });
 }
 

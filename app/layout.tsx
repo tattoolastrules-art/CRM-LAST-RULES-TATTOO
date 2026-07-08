@@ -4,6 +4,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0F1522",
 };
 import { Cinzel, Montserrat } from "next/font/google";
 import "./globals.css";
@@ -27,8 +28,10 @@ export const metadata: Metadata = {
   icons: {
     icon: "/logo.svg",
     shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    apple: "/icon-192.png",
   },
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, title: "LastRules OS", statusBarStyle: "black-translucent" },
 };
 
 export default function RootLayout({

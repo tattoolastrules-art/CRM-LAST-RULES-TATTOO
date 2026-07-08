@@ -56,3 +56,5 @@ next-env.d.ts
 
 # mantener el ejemplo de variables de entorno
 !.env.example
+
+/.vapid.tmp

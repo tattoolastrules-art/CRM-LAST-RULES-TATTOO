@@ -1,0 +1,14 @@
+{
+  "name": "Last Rules OS",
+  "short_name": "LastRules OS",
+  "description": "CRM, omnicanal y agenda de LAST RULES TATTOO",
+  "start_url": "/os",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0F1522",
+  "theme_color": "#0F1522",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

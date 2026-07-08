@@ -27,12 +27,13 @@ export async function POST(req: Request) {
     const file = form.get("file") as File | null;
     const contacto = String(form.get("contacto") || "");
     const caption = String(form.get("caption") || "");
+    const thumb = String(form.get("thumb") || "");
     if (!file || !contacto) return Response.json({ error: "faltan datos" }, { status: 400 });
     try {
       const buf = Buffer.from(await file.arrayBuffer());
       const mediaId = await uploadWhatsAppMedia(buf, file.type || "image/jpeg");
       await sendWhatsAppImage(contacto, mediaId, caption || undefined);
-      await addConvoMsg(contacto, "", "equipo", "📷 Imagen" + (caption ? " — " + caption : ""));
+      await addConvoMsg(contacto, "", "equipo", caption || "", thumb.startsWith("data:image/") ? thumb : undefined);
       return Response.json({ ok: true, convos: await getConvos() });
     } catch (e) {
       return Response.json({ error: (e as Error).message }, { status: 500 });

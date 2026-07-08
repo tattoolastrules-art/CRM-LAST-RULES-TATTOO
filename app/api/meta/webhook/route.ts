@@ -5,6 +5,7 @@ import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
 import { getSettings } from "@/lib/settings";
 import { addConvoMsg } from "@/lib/convos";
+import { pushAll } from "@/lib/push";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,14 +125,16 @@ function extractLead(object: string, entry: Entry | null):
 }
 
 // Elige la respuesta de Ana según el tipo de mensaje
-async function replyFor(lead: { waType?: string; mediaId?: string; caption?: string; texto?: string; idea?: unknown; nombre?: unknown }): Promise<string | null> {
+async function replyFor(
+  lead: { waType?: string; mediaId?: string; caption?: string; texto?: string; idea?: unknown; nombre?: unknown },
+  media: { b64: string; mime: string } | null,
+): Promise<string | null> {
   const type = lead.waType || "text";
 
   if (type === "reaction") return null; // a una reacción no se responde (queda en el CRM)
 
-  if (type === "image" && lead.mediaId) {
+  if (type === "image") {
     // Ana MIRA la imagen (visión); si no puede, respuesta predefinida
-    const media = await fetchMediaBase64(lead.mediaId);
     if (media && media.mime.startsWith("image/")) {
       const v = await anovaVision(media.b64, media.mime, lead.caption || "", String(lead.nombre || ""));
       if (v) return v;
@@ -169,12 +172,28 @@ export async function POST(req: Request) {
     if (lead) {
       if (lead.origen === "whatsapp") {
         await upsertLeadByContact(lead);
-        await addConvoMsg(String(lead.contacto), String(lead.nombre || ""), "coleccionista", String(lead.idea || ""));
+
+        // Si mandó imagen: se descarga UNA vez (para verla en el chat y para la visión de Ana)
+        let media: { b64: string; mime: string } | null = null;
+        if (lead.waType === "image" && lead.mediaId) {
+          media = await fetchMediaBase64(String(lead.mediaId)).catch(() => null);
+        }
+        const imgUrl = media && media.mime.startsWith("image/") && media.b64.length < 280000
+          ? `data:${media.mime};base64,${media.b64}`
+          : undefined;
+
+        await addConvoMsg(String(lead.contacto), String(lead.nombre || ""), "coleccionista", String(lead.idea || ""), imgUrl);
+
+        // Notificación push al equipo (en los dispositivos con avisos activados)
+        if (lead.waType !== "reaction") {
+          pushAll("💬 " + String(lead.nombre || "WhatsApp"), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
+        }
+
         // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
-            const reply = await replyFor(lead);
+            const reply = await replyFor(lead, media);
             if (reply) {
               await sendWhatsAppText(String(lead.contacto), reply);
               await addConvoMsg(String(lead.contacto), "", "ana", reply);

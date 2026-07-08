@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPlus, Clock, Check, RefreshCw, Plus } from "lucide-react";
+import { CalendarPlus, Clock, Check, RefreshCw, Plus, HeartPulse } from "lucide-react";
+import FollowupsPanel from "./FollowupsPanel";
 import {
   MAESTROS,
   APPOINTMENTS,
@@ -23,6 +24,7 @@ export default function Agenda() {
   const [gEvents, setGEvents] = useState<GEvent[]>([]);
   const [gMsg, setGMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showSeg, setShowSeg] = useState(false);
 
   const monday = mondayOf();
   const dayDate = (i: number) => {
@@ -108,7 +110,8 @@ export default function Agenda() {
   }
 
   return (
-    <div className="flex h-full flex-col p-5">
+    <div className="relative flex h-full flex-col p-5">
+      {showSeg && <FollowupsPanel onClose={() => setShowSeg(false)} />}
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -119,6 +122,12 @@ export default function Agenda() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSeg((v) => !v)}
+            className="flex items-center gap-1.5 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-sm text-bone-dim hover:text-bone"
+          >
+            <HeartPulse size={15} /> Seguimientos
+          </button>
           {gStatus?.connected ? (
             <>
               <span className="flex items-center gap-1 rounded-lg bg-[#3FB37F]/15 px-3 py-1.5 text-sm text-[#3FB37F]">
