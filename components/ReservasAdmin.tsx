@@ -16,6 +16,7 @@ export default function ReservasAdmin() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [maestros, setMaestros] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [anova, setAnova] = useState<boolean | null>(null);
 
   async function load() {
     const r = await fetch("/api/lead");
@@ -24,7 +25,15 @@ export default function ReservasAdmin() {
   useEffect(() => {
     load();
     fetch("/api/content").then((r) => r.json()).then((c) => setMaestros((c.tatuadores || []).map((t: { nombre: string }) => t.nombre))).catch(() => {});
+    fetch("/api/settings").then((r) => (r.ok ? r.json() : null)).then((s) => s && setAnova(!!s.anovaAuto)).catch(() => {});
   }, []);
+
+  async function toggleAnova() {
+    const next = !anova;
+    setAnova(next);
+    const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anovaAuto: next }) });
+    if (!r.ok) { setAnova(!next); alert("Solo el administrador puede cambiar esto."); }
+  }
 
   async function patch(body: unknown) {
     setBusy(true);
@@ -87,6 +96,16 @@ export default function ReservasAdmin() {
           <div className="text-[11px] text-bone-dim">{leads.length} solicitud(es) desde lastrulestattoo.com</div>
         </div>
         <div className="flex items-center gap-2">
+          {anova !== null && (
+            <button
+              onClick={toggleAnova}
+              title="Respuestas automáticas de ANOVA/Lana en WhatsApp"
+              className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${anova ? "border-[#37C7C0]/50 bg-[#37C7C0]/10 text-[#37C7C0]" : "border-line bg-navy-soft text-bone-dim"}`}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${anova ? "bg-[#37C7C0]" : "bg-line"}`} />
+              ANOVA {anova ? "ON" : "OFF"}
+            </button>
+          )}
           <button onClick={exportCSV} className="flex items-center gap-1.5 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-sm text-bone-dim hover:text-bone"><Download size={15} /> CSV</button>
           <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-sm text-bone-dim hover:text-bone"><RefreshCw size={15} /> Refrescar</button>
         </div>

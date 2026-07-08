@@ -3,6 +3,7 @@ import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
 import { anovaReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText } from "@/lib/whatsapp";
+import { getSettings } from "@/lib/settings";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,8 +85,9 @@ export async function POST(req: Request) {
     if (lead) {
       if (lead.origen === "whatsapp") {
         await upsertLeadByContact(lead);
-        // ANOVA responde automáticamente (predefinida sin tokens o Lana vía Claude)
-        if (waConfigured() && process.env.ANOVA_AUTO !== "off") {
+        // ANOVA responde automáticamente (interruptor en el OS: Reservas → ANOVA)
+        const cfg = await getSettings();
+        if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
             const { reply } = await anovaReply(String(lead.idea || ""), String(lead.nombre || ""));
             await sendWhatsAppText(String(lead.contacto), reply);
