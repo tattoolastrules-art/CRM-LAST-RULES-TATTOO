@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { addMetaEvent } from "@/lib/meta";
-import { addLead } from "@/lib/leads";
+import { addLead, upsertLeadByContact } from "@/lib/leads";
+import { anovaReply } from "@/lib/anova";
+import { waConfigured, sendWhatsAppText } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,7 +81,22 @@ export async function POST(req: Request) {
     await addMetaEvent({ id: crypto.randomBytes(4).toString("hex"), at: new Date().toISOString(), object, summary, raw: body });
 
     const lead = extractLead(object, entry);
-    if (lead) await addLead(lead);
+    if (lead) {
+      if (lead.origen === "whatsapp") {
+        await upsertLeadByContact(lead);
+        // ANOVA responde automáticamente (predefinida sin tokens o Lana vía Claude)
+        if (waConfigured() && process.env.ANOVA_AUTO !== "off") {
+          try {
+            const { reply } = await anovaReply(String(lead.idea || ""), String(lead.nombre || ""));
+            await sendWhatsAppText(String(lead.contacto), reply);
+          } catch {
+            /* si falla el envío no rompemos la recepción */
+          }
+        }
+      } else {
+        await addLead(lead);
+      }
+    }
   } catch {
     /* nunca fallar el 200: Meta reintenta si no respondemos rápido */
   }

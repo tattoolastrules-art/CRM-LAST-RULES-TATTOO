@@ -37,6 +37,23 @@ export async function addLead(item: Record<string, unknown>): Promise<Lead> {
   return lead;
 }
 
+// Crea o actualiza el lead por contacto (evita duplicados del mismo número/canal).
+export async function upsertLeadByContact(item: Record<string, unknown>): Promise<Lead> {
+  const leads = await getLeads();
+  const contacto = s(item.contacto, 120);
+  const origen = s(item.origen || "web", 40);
+  const found = contacto ? leads.find((l) => l.contacto === contacto && l.origen === origen) : undefined;
+  if (found) {
+    const nuevaIdea = s(item.idea, 500);
+    if (nuevaIdea) found.idea = s(found.idea ? found.idea + " | " + nuevaIdea : nuevaIdea, 1200);
+    found.fecha = new Date().toISOString();
+    if (found.estado === "descartado") found.estado = "nuevo";
+    await saveJSON("leads", leads);
+    return found;
+  }
+  return addLead(item);
+}
+
 export async function updateLead(id: string, patch: Partial<Lead>) {
   const leads = await getLeads();
   const i = leads.findIndex((l) => l.id === id);
