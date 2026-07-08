@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 import {
   Search,
   Smile,
@@ -35,6 +36,7 @@ export default function OmniInbox() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [chFilter, setChFilter] = useState<Channel | "all">("all");
+  const [mobileChat, setMobileChat] = useState(false); // en celular: lista ↔ chat
   const endRef = useRef<HTMLDivElement>(null);
   const selected = convos.find((c) => c.id === selectedId)!;
 
@@ -99,7 +101,7 @@ export default function OmniInbox() {
   return (
     <div className="flex h-full bg-[#0b141a]">
       {/* Lista de chats (estilo WhatsApp) */}
-      <div className="flex w-[320px] shrink-0 flex-col border-r border-black/40">
+      <div className={`w-full shrink-0 flex-col border-r border-black/40 sm:w-[320px] ${mobileChat ? "hidden sm:flex" : "flex"}`}>
         <div className="bg-[#202c33] px-3 py-2.5">
           <div className="flex items-center gap-2 rounded-lg bg-[#111b21] px-3 py-1.5">
             <Search size={15} className="text-[#8696a0]" />
@@ -140,7 +142,7 @@ export default function OmniInbox() {
             return (
               <button
                 key={c.id}
-                onClick={() => setSelectedId(c.id)}
+                onClick={() => { setSelectedId(c.id); setMobileChat(true); }}
                 className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition ${
                   active ? "bg-[#2a3942]" : "hover:bg-[#202c33]"
                 }`}
@@ -186,7 +188,7 @@ export default function OmniInbox() {
 
       {/* Conversación (estilo WhatsApp) */}
       <div
-        className="flex flex-1 flex-col"
+        className={`flex-1 flex-col ${mobileChat ? "flex" : "hidden sm:flex"}`}
         style={{
           backgroundImage:
             "radial-gradient(rgba(255,255,255,0.015) 1px, transparent 1px)",
@@ -195,6 +197,9 @@ export default function OmniInbox() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 bg-[#202c33] px-4 py-2">
+          <button onClick={() => setMobileChat(false)} className="-ml-1 text-[#8696a0] hover:text-[#e9edef] sm:hidden" aria-label="Volver">
+            <ArrowLeft size={20} />
+          </button>
           <div
             className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-[#0b141a]"
             style={{ background: `hsl(${selected.contact.avatarHue ?? 40} 50% 62%)` }}

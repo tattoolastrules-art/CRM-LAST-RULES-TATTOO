@@ -152,7 +152,8 @@ export default function CrmDashboard() {
             />
           </div>
         </div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wide text-bone-dim">
               <th className="px-4 py-2 font-medium">Coleccionista</th>
@@ -196,6 +197,7 @@ export default function CrmDashboard() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

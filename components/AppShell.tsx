@@ -102,16 +102,16 @@ export default function AppShell() {
   const current = items.some((it) => it.id === view) ? view : "flujos";
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <nav className="flex w-[78px] shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-line/60 bg-navy-soft py-4">
-        <div className="mb-4">
+    <div className="flex h-screen w-screen flex-col-reverse overflow-hidden sm:flex-row">
+      <nav className="flex h-[64px] w-full shrink-0 flex-row items-center gap-1 overflow-x-auto border-t border-line/60 bg-navy-soft px-2 sm:h-auto sm:w-[78px] sm:flex-col sm:overflow-y-auto sm:border-r sm:border-t-0 sm:px-0 sm:py-4">
+        <div className="mb-0 hidden sm:mb-4 sm:block">
           <Logo size={42} />
         </div>
         {items.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setView(id)}
-            className={`relative flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 transition ${
+            className={`relative flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition sm:w-[62px] sm:gap-1 sm:py-2.5 ${
               current === id ? "bg-gold/15 text-gold" : "text-bone-dim hover:bg-white/5 hover:text-bone"
             }`}
           >
@@ -125,7 +125,7 @@ export default function AppShell() {
         <button
           onClick={cycleTheme}
           title={"Tema: " + THEME_META[theme].label + " (clic para cambiar)"}
-          className="mt-auto flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 text-bone-dim transition hover:bg-white/5 hover:text-bone"
+          className="ml-auto flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 text-bone-dim transition hover:bg-white/5 hover:text-bone sm:ml-0 sm:mt-auto sm:w-[62px] sm:gap-1 sm:py-2.5"
         >
           {(() => { const I = THEME_META[theme].Icon; return <I size={18} />; })()}
           <span className="text-[10px] font-medium">{THEME_META[theme].label}</span>
@@ -133,12 +133,12 @@ export default function AppShell() {
         <button
           onClick={logout}
           title={"Salir · " + user.name}
-          className="flex w-[62px] flex-col items-center gap-1 rounded-xl py-2.5 text-bone-dim transition hover:bg-white/5 hover:text-bone"
+          className="flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 text-bone-dim transition hover:bg-white/5 hover:text-bone sm:w-[62px] sm:gap-1 sm:py-2.5"
         >
           <LogOut size={18} />
           <span className="text-[10px] font-medium">Salir</span>
         </button>
-        <div className="px-1 text-center font-display text-[9px] leading-tight tracking-widest text-gold-soft">
+        <div className="hidden px-1 text-center font-display text-[9px] leading-tight tracking-widest text-gold-soft sm:block">
           LAST
           <br />
           RULES

@@ -40,7 +40,7 @@ export default function Login({ onLogin }: { onLogin: (u: AuthUser) => void }) {
 
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-navy" style={{ fontFamily: "var(--font-montserrat)" }}>
-      <form onSubmit={submit} className="glass w-[340px] rounded-2xl p-7">
+      <form onSubmit={submit} className="glass w-[340px] max-w-[92vw] rounded-2xl p-7">
         <div className="mb-5 flex flex-col items-center">
           <Logo size={56} />
           <div className="mt-3 font-display tracking-widest text-bone">LAST RULES OS</div>

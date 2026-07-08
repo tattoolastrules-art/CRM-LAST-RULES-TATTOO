@@ -64,13 +64,13 @@ export default function Planner() {
           <div className="font-display text-lg text-bone">Planificador · Marketing</div>
           <div className="text-[11px] text-bone-dim">Escribe la idea, dale + y arrástrala entre columnas según avance.</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <input
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && quickAdd()}
             placeholder="Nueva idea… (ej: Reel del cover-up de María)"
-            className="w-64 rounded-lg border border-line bg-navy-soft px-3 py-2 text-sm text-bone outline-none placeholder:text-bone-dim/60 focus:border-gold/50"
+            className="w-full rounded-lg border border-line bg-navy-soft px-3 py-2 text-sm text-bone outline-none placeholder:text-bone-dim/60 focus:border-gold/50 sm:w-64"
           />
           <select value={canal} onChange={(e) => setCanal(e.target.value)} className="rounded-lg border border-line bg-navy-soft px-2 py-2 text-sm text-bone outline-none">
             {Object.entries(CANALES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
