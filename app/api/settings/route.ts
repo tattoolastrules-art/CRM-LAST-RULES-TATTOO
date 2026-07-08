@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
-import { getSettings, saveSettings } from "@/lib/settings";
+import { getSettings, saveSettings, type Settings } from "@/lib/settings";
+import { isOwnerEmail } from "@/lib/owner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,5 +19,16 @@ export async function POST(req: Request) {
   if (!s || s.role !== "admin")
     return Response.json({ error: "Solo el administrador" }, { status: 403 });
   const b = await req.json();
-  return Response.json(await saveSettings({ anovaAuto: !!b.anovaAuto }));
+
+  const patch: Partial<Settings> = {};
+  if (typeof b.anovaAuto === "boolean") patch.anovaAuto = b.anovaAuto;
+
+  // Los módulos solo los administra el dueño del sistema (Chato / PRODY-G)
+  if (b.modules && typeof b.modules === "object") {
+    if (!(await isOwnerEmail(s.email)))
+      return Response.json({ error: "Los módulos solo los administra PRODY-G" }, { status: 403 });
+    patch.modules = b.modules;
+  }
+
+  return Response.json(await saveSettings(patch));
 }

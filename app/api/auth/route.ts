@@ -11,7 +11,10 @@ const WEEK = 1000 * 60 * 60 * 24 * 7;
 export async function GET() {
   const c = await cookies();
   const s = await verifySession(c.get("lr_session")?.value);
-  return NextResponse.json({ user: s ? { email: s.email, role: s.role, name: s.name } : null });
+  if (!s) return NextResponse.json({ user: null });
+  const { isOwnerEmail } = await import("@/lib/owner");
+  const owner = await isOwnerEmail(s.email);
+  return NextResponse.json({ user: { email: s.email, role: s.role, name: s.name, owner } });
 }
 
 export async function POST(req: Request) {

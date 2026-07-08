@@ -63,46 +63,56 @@ body {
   background: transparent;
 }
 
-/* ===== TEMAS (normal = por defecto · dark · light) ===== */
+/* ===== TEMAS — 100% línea gráfica LAST RULES (navy · marfil "bone" · oro #C5A059) ===== */
+
+/* OSCURO: El Templo de noche — navy casi negro, el oro brilla más */
 html[data-theme="dark"] {
-  --color-navy: #05070d;
-  --color-navy-soft: #0a0e17;
-  --color-navy-card: #0d121d;
-  --color-line: #1b2231;
+  --color-navy: #060910;
+  --color-navy-soft: #0a0f1a;
+  --color-navy-card: #0d1322;
+  --color-line: #1e2738;
+  --color-gold: #d2ae66;
+  --color-gold-soft: #e2cc95;
 }
 html[data-theme="dark"] body {
   background:
-    radial-gradient(1100px 700px at 78% -12%, #0d1322 0%, transparent 60%),
+    radial-gradient(1100px 700px at 78% -12%, #101a30 0%, transparent 60%),
+    radial-gradient(700px 500px at 8% 108%, rgba(197, 160, 89, 0.06) 0%, transparent 55%),
     var(--color-navy);
 }
 html[data-theme="dark"] .glass {
-  background: linear-gradient(180deg, rgba(13, 18, 29, 0.9), rgba(8, 11, 18, 0.9));
+  background: linear-gradient(180deg, rgba(13, 19, 34, 0.9), rgba(8, 12, 22, 0.9));
+  border: 1px solid rgba(210, 174, 102, 0.16);
 }
 
+/* CLARO: marfil "bone" de la marca (#F0EBE1) con navy y oro profundo */
 html[data-theme="light"] {
-  --color-navy: #f2eee6;
-  --color-navy-soft: #ffffff;
-  --color-navy-card: #ffffff;
-  --color-line: #d8d1c0;
-  --color-bone: #242a3a;
-  --color-bone-dim: #6f6b5e;
-  --color-gold: #9c7a30;
-  --color-gold-soft: #7e6326;
+  --color-navy: #f0ebe1;
+  --color-navy-soft: #faf7f0;
+  --color-navy-card: #fffdf8;
+  --color-line: #d8cdb6;
+  --color-bone: #0f1522;
+  --color-bone-dim: #6e6854;
+  --color-gold: #9a7a2e;
+  --color-gold-soft: #7d6224;
 }
 html[data-theme="light"] body {
   background:
-    radial-gradient(1100px 700px at 78% -12%, #e7e0d0 0%, transparent 60%),
-    radial-gradient(900px 600px at 0% 110%, #ece5d4 0%, transparent 55%),
+    radial-gradient(1100px 700px at 78% -12%, #e7dfcc 0%, transparent 60%),
+    radial-gradient(900px 600px at 0% 110%, #ece3d0 0%, transparent 55%),
     var(--color-navy);
   color: var(--color-bone);
 }
 html[data-theme="light"] .glass {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 244, 236, 0.92));
-  border: 1px solid rgba(156, 122, 48, 0.28);
-  box-shadow: 0 18px 50px -12px rgba(96, 84, 60, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(248, 243, 233, 0.94));
+  border: 1px solid rgba(154, 122, 46, 0.3);
+  box-shadow: 0 18px 50px -12px rgba(90, 76, 48, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+html[data-theme="light"] .gold-ring {
+  box-shadow: 0 0 0 1px rgba(154, 122, 46, 0.4), 0 8px 30px -8px rgba(154, 122, 46, 0.25);
 }
 html[data-theme="light"] *::-webkit-scrollbar-thumb {
-  background: rgba(156, 122, 48, 0.35);
+  background: rgba(154, 122, 46, 0.35);
 }
 
 /* React Flow: integrar al tema oscuro */

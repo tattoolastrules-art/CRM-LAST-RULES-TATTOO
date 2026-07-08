@@ -13,8 +13,11 @@ import {
   Monitor,
   Moon,
   Sun,
+  Cog,
+  X,
   LogOut,
 } from "lucide-react";
+import SistemaAdmin from "./SistemaAdmin";
 import { Logo } from "./Logo";
 import FlowBuilder from "./FlowBuilder";
 import OmniInbox from "./OmniInbox";
@@ -26,14 +29,23 @@ import ReservasAdmin from "./ReservasAdmin";
 import Planner from "./Planner";
 import Login from "./Login";
 
-type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "usuarios";
+type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "usuarios" | "sistema";
+
+// Insinuaciones sutiles de evolución (rotan; requieren desarrollo PRODY-G)
+const HINTS = [
+  "¿Y si Ana entendiera las fotos de referencia que envían? Se puede…",
+  "Recordatorios de cita automáticos por WhatsApp reducirían inasistencias…",
+  "Un reporte semanal de leads y cierres al WhatsApp del equipo…",
+  "El Planner podría sugerir ideas de contenido con IA…",
+  "Encuestas post-sesión y reseñas de Google con un clic…",
+];
 type Theme = "normal" | "dark" | "light";
 const THEME_META: Record<Theme, { Icon: typeof Monitor; label: string }> = {
   normal: { Icon: Monitor, label: "Normal" },
   dark: { Icon: Moon, label: "Oscuro" },
   light: { Icon: Sun, label: "Claro" },
 };
-type AuthUser = { email: string; role: string; name: string } | null;
+type AuthUser = { email: string; role: string; name: string; owner?: boolean } | null;
 
 const ITEMS = [
   { id: "flujos" as const, label: "Flujos", Icon: Workflow },
@@ -80,12 +92,22 @@ export default function AppShell() {
       .finally(() => setLoading(false));
   }, []);
 
+  const [mods, setMods] = useState<Record<string, boolean> | null>(null);
+  const [hintIdx, setHintIdx] = useState(0);
+  const [hintOff, setHintOff] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     fetch("/api/lead")
       .then((r) => (r.ok ? r.json() : { leads: [] }))
       .then((d) => setNuevas((d.leads || []).filter((l: { estado: string }) => l.estado === "nuevo").length))
       .catch(() => {});
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => s && setMods(s.modules || {}))
+      .catch(() => {});
+    const t = setInterval(() => setHintIdx((i) => (i + 1) % HINTS.length), 50000);
+    return () => clearInterval(t);
   }, [user]);
 
   async function logout() {
@@ -98,8 +120,15 @@ export default function AppShell() {
   if (!user) return <Login onLogin={setUser} />;
 
   const isAdmin = user.role === "admin";
-  const items = ITEMS.filter((it) => it.id !== "usuarios" || isAdmin);
-  const current = items.some((it) => it.id === view) ? view : "flujos";
+  const base = ITEMS.filter((it) => {
+    if (it.id === "usuarios") return isAdmin;
+    // módulos apagados por PRODY-G desaparecen para todos menos el dueño
+    return user.owner || !mods || mods[it.id] !== false;
+  });
+  const items: { id: View; label: string; Icon: typeof Workflow }[] = user.owner
+    ? [...base, { id: "sistema" as const, label: "Sistema", Icon: Cog }]
+    : base;
+  const current = items.some((it) => it.id === view) ? view : (items[0]?.id ?? "flujos");
 
   return (
     <div className="flex h-screen w-screen flex-col-reverse overflow-hidden sm:flex-row" style={{ height: "100dvh" }}>
@@ -156,7 +185,20 @@ export default function AppShell() {
         {current === "agenda" && <Agenda />}
         {current === "sitio" && <SiteAdmin />}
         {current === "usuarios" && isAdmin && <UsersAdmin />}
+        {current === "sistema" && user.owner && <SistemaAdmin />}
       </main>
+
+      {/* Insinuación sutil de evolución del sistema */}
+      {!hintOff && (
+        <div className="pointer-events-auto fixed bottom-[74px] right-3 z-40 flex max-w-[280px] items-start gap-2 rounded-xl border border-line/50 bg-navy-soft/85 px-3 py-2 backdrop-blur sm:bottom-3">
+          <span className="text-[10.5px] leading-snug text-bone-dim/80">
+            💡 {HINTS[hintIdx]} <span className="text-gold-soft/60">— PRODY-G</span>
+          </span>
+          <button onClick={() => setHintOff(true)} className="mt-0.5 shrink-0 text-bone-dim/50 hover:text-bone-dim" aria-label="Cerrar">
+            <X size={11} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
