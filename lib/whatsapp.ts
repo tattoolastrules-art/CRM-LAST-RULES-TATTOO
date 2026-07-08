@@ -27,6 +27,38 @@ export async function fetchMediaBase64(mediaId: string): Promise<{ b64: string; 
   }
 }
 
+// Sube una imagen a Meta y devuelve el media id (para enviarla por WhatsApp)
+export async function uploadWhatsAppMedia(buf: Buffer, mime: string): Promise<string> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_ID;
+  if (!token || !phoneId) throw new Error("Falta WHATSAPP_TOKEN / WHATSAPP_PHONE_ID");
+  const fd = new FormData();
+  fd.append("messaging_product", "whatsapp");
+  fd.append("file", new Blob([new Uint8Array(buf)], { type: mime }), "foto.jpg");
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
+  if (!res.ok) throw new Error("upload media " + res.status + ": " + (await res.text()));
+  const d = (await res.json()) as { id?: string };
+  if (!d.id) throw new Error("upload sin id");
+  return d.id;
+}
+
+export async function sendWhatsAppImage(to: string, mediaId: string, caption?: string) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_ID;
+  if (!token || !phoneId) throw new Error("Falta WHATSAPP_TOKEN / WHATSAPP_PHONE_ID");
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "image", image: { id: mediaId, ...(caption ? { caption } : {}) } }),
+  });
+  if (!res.ok) throw new Error("WhatsApp image " + res.status + ": " + (await res.text()));
+  return res.json();
+}
+
 export async function sendWhatsAppText(to: string, text: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;

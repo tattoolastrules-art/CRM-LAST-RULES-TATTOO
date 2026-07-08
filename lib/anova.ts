@@ -4,6 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./lana-prompt";
+import { matchFlow, flowText, styleGuide } from "./flow-engine";
 
 const GREETING =
   /^(hola+|buenas+|buenos dias|buenas tardes|buenas noches|hey|holi+|hello|hi|info|informacion|información|precio|leido|leído|ok|listo)[\s!.,?¡¿]*$/i;
@@ -97,14 +98,23 @@ export async function anovaReply(
 ): Promise<{ reply: string; mode: "predefinida" | "anova" }> {
   const t = (text || "").trim();
   if (!t || t.length < 2 || GREETING.test(t) || t.startsWith("[")) {
-    return { reply: randomWelcome(), mode: "predefinida" };
+    // Bienvenida: usa el saludo del flujo F1 (editable desde el OS) si existe
+    const w = await flowText("f1", "m1").catch(() => "");
+    return { reply: w || randomWelcome(), mode: "predefinida" };
   }
+
+  // ¿El mensaje dispara un flujo? → respuesta del flujo (editable, sin tokens)
+  const flowReply = await matchFlow(t).catch(() => null);
+  if (flowReply) return { reply: flowReply, mode: "predefinida" };
+
   if (!process.env.ANTHROPIC_API_KEY) return { reply: randomWelcome(), mode: "predefinida" };
 
+  const guide = await styleGuide().catch(() => "");
   const client = new Anthropic();
   const system =
     buildSystemPrompt() +
-    "\n\nEstás respondiendo por WhatsApp. Responde ÚNICAMENTE con el mensaje para el Coleccionista: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda.";
+    "\n\nEstás respondiendo por WhatsApp. Responde ÚNICAMENTE con el mensaje para el Coleccionista: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda." +
+    (guide ? "\n\nMENSAJES APROBADOS DEL ESTUDIO (síguelos como guía de tono y contenido):\n" + guide : "");
   const r = await client.messages.create({
     model: process.env.LANA_MODEL || "claude-haiku-4-5",
     max_tokens: 300,

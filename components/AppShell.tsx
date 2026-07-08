@@ -31,14 +31,17 @@ import Login from "./Login";
 
 type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "usuarios" | "sistema";
 
-// Insinuaciones sutiles de evolución (rotan; requieren desarrollo PRODY-G)
-const HINTS = [
-  "¿Y si Ana entendiera las fotos de referencia que envían? Se puede…",
-  "Recordatorios de cita automáticos por WhatsApp reducirían inasistencias…",
-  "Un reporte semanal de leads y cierres al WhatsApp del equipo…",
-  "El Planner podría sugerir ideas de contenido con IA…",
-  "Encuestas post-sesión y reseñas de Google con un clic…",
-];
+// Insinuaciones contextuales: aparecen en el módulo donde el usuario podría
+// querer algo más (cosas que requieren desarrollo PRODY-G)
+const HINTS: Partial<Record<string, string>> = {
+  flujos: "¿Te gustaría crear flujos nuevos o ramas completas? Eso ya es desarrollo… PRODY-G puede ampliarlo",
+  omni: "¿Notas de voz enviadas desde aquí y transcripción automática de audios? Se puede desarrollar",
+  crm: "¿Un reporte semanal automático de leads y cierres al WhatsApp del equipo? Se puede montar",
+  reservas: "¿Que Ana responda audios transcribiéndolos y envíe fotos del portafolio sola? Es desarrollable",
+  planner: "¿Publicación automática de estas campañas en IG/FB con un clic? Se puede construir",
+  agenda: "¿Recordatorios de cita automáticos por WhatsApp 24h antes? Reducirían inasistencias",
+  sitio: "¿Un blog con SEO automático para salir en Google? El sitio está listo para crecer",
+};
 type Theme = "normal" | "dark" | "light";
 const THEME_META: Record<Theme, { Icon: typeof Monitor; label: string }> = {
   normal: { Icon: Monitor, label: "Normal" },
@@ -93,8 +96,8 @@ export default function AppShell() {
   }, []);
 
   const [mods, setMods] = useState<Record<string, boolean> | null>(null);
-  const [hintIdx, setHintIdx] = useState(0);
-  const [hintOff, setHintOff] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [hintShown, setHintShown] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -106,9 +109,20 @@ export default function AppShell() {
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => s && setMods(s.modules || {}))
       .catch(() => {});
-    const t = setInterval(() => setHintIdx((i) => (i + 1) % HINTS.length), 50000);
-    return () => clearInterval(t);
   }, [user]);
+
+  // La insinuación aparece tras un rato de estar usando ese módulo (una vez por sesión)
+  useEffect(() => {
+    if (!user) return;
+    const text = HINTS[view];
+    if (!text || hintShown[view]) return;
+    const show = setTimeout(() => {
+      setHint(text);
+      setHintShown((p) => ({ ...p, [view]: true }));
+    }, 12000);
+    const hide = setTimeout(() => setHint(null), 34000);
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, [view, user, hintShown]);
 
   async function logout() {
     await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) });
@@ -188,13 +202,13 @@ export default function AppShell() {
         {current === "sistema" && user.owner && <SistemaAdmin />}
       </main>
 
-      {/* Insinuación sutil de evolución del sistema */}
-      {!hintOff && (
+      {/* Insinuación contextual sutil (según el módulo en uso) */}
+      {hint && (
         <div className="pointer-events-auto fixed bottom-[74px] right-3 z-40 flex max-w-[280px] items-start gap-2 rounded-xl border border-line/50 bg-navy-soft/85 px-3 py-2 backdrop-blur sm:bottom-3">
           <span className="text-[10.5px] leading-snug text-bone-dim/80">
-            💡 {HINTS[hintIdx]} <span className="text-gold-soft/60">— PRODY-G</span>
+            💡 {hint} <span className="text-gold-soft/60">— PRODY-G</span>
           </span>
-          <button onClick={() => setHintOff(true)} className="mt-0.5 shrink-0 text-bone-dim/50 hover:text-bone-dim" aria-label="Cerrar">
+          <button onClick={() => setHint(null)} className="mt-0.5 shrink-0 text-bone-dim/50 hover:text-bone-dim" aria-label="Cerrar">
             <X size={11} />
           </button>
         </div>

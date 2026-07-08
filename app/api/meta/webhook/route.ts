@@ -4,6 +4,7 @@ import { addLead, upsertLeadByContact } from "@/lib/leads";
 import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
 import { getSettings } from "@/lib/settings";
+import { addConvoMsg } from "@/lib/convos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -168,12 +169,16 @@ export async function POST(req: Request) {
     if (lead) {
       if (lead.origen === "whatsapp") {
         await upsertLeadByContact(lead);
+        await addConvoMsg(String(lead.contacto), String(lead.nombre || ""), "coleccionista", String(lead.idea || ""));
         // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
             const reply = await replyFor(lead);
-            if (reply) await sendWhatsAppText(String(lead.contacto), reply);
+            if (reply) {
+              await sendWhatsAppText(String(lead.contacto), reply);
+              await addConvoMsg(String(lead.contacto), "", "ana", reply);
+            }
           } catch {
             /* si falla el envío no rompemos la recepción */
           }

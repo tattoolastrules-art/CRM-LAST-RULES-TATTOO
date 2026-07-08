@@ -6,7 +6,6 @@ import {
   Search,
   Smile,
   Paperclip,
-  Mic,
   Send,
   Sparkles,
   Camera,
@@ -14,6 +13,47 @@ import {
   MessageCircleMore,
 } from "lucide-react";
 import type { Conversation, Channel, Message } from "@/lib/types";
+
+type Item = Conversation & { real?: boolean };
+const EMOJIS = ["🖤", "🤍", "✨", "👑", "😊", "🙌", "🔥", "🙏"];
+
+// Reduce la imagen en el navegador antes de enviarla por WhatsApp
+async function resizeImage(file: File, maxDim = 1600, quality = 0.82): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) { const r = Math.min(maxDim / w, maxDim / h); w = Math.round(w * r); h = Math.round(h * r); }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no ctx"));
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("no blob"))), "image/jpeg", quality);
+    };
+    img.onerror = () => reject(new Error("img error"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function mapReal(list: Array<Record<string, unknown>>): Item[] {
+  return list.map((c) => ({
+    id: "r:" + c.id,
+    contact: { name: (c.nombre as string) || (c.id as string), avatarHue: 150 },
+    channel: "whatsapp" as Channel,
+    stage: "nuevo",
+    idea: "",
+    unread: !!c.unread,
+    lastAt: c.lastAt as string,
+    messages: ((c.messages as Array<Record<string, string>>) || []).map((m) => ({
+      id: m.id,
+      at: m.at,
+      text: m.text,
+      sender: m.sender === "coleccionista" ? "coleccionista" : m.sender === "equipo" ? "maestro" : "lana",
+    })),
+    real: true,
+  })) as unknown as Item[];
+}
 import { SEED_CONVERSATIONS } from "@/lib/seed-conversations";
 import { CHANNEL_LABELS } from "@/lib/types";
 import { CHANNEL_COLOR } from "@/lib/brand";
@@ -37,8 +77,30 @@ export default function OmniInbox() {
   const [query, setQuery] = useState("");
   const [chFilter, setChFilter] = useState<Channel | "all">("all");
   const [mobileChat, setMobileChat] = useState(false); // en celular: lista ↔ chat
+  const [real, setReal] = useState<Item[]>([]);
+  const [sending, setSending] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const selected = convos.find((c) => c.id === selectedId)!;
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Conversaciones REALES de WhatsApp (se refrescan solas)
+  useEffect(() => {
+    let on = true;
+    async function loadReal() {
+      try {
+        const r = await fetch("/api/convos");
+        if (!r.ok) return;
+        const d = await r.json();
+        if (on) setReal(mapReal(d.convos || []));
+      } catch {}
+    }
+    loadReal();
+    const t = setInterval(loadReal, 20000);
+    return () => { on = false; clearInterval(t); };
+  }, []);
+
+  const all: Item[] = [...real, ...(convos as Item[])];
+  const selected = all.find((c) => c.id === selectedId) ?? all[0];
 
   const TABS: { id: Channel | "all"; label: string }[] = [
     { id: "all", label: "Todos" },
@@ -49,9 +111,9 @@ export default function OmniInbox() {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selected.messages.length, selectedId]);
+  }, [selected?.messages.length, selectedId]);
 
-  const list = convos
+  const list = all
     .filter((c) => (chFilter === "all" ? true : c.channel === chFilter))
     .filter((c) =>
       query
@@ -60,9 +122,33 @@ export default function OmniInbox() {
     )
     .sort((a, b) => +new Date(b.lastAt) - +new Date(a.lastAt));
 
+  function pick(c: Item) {
+    setSelectedId(c.id);
+    setMobileChat(true);
+    if (c.real && c.unread) {
+      setReal((prev) => prev.map((x) => (x.id === c.id ? { ...x, unread: false } : x)));
+      fetch("/api/convos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "read", id: c.id.slice(2) }) }).catch(() => {});
+    }
+  }
+
   function send(text: string) {
-    if (!text.trim()) return;
+    if (!text.trim() || !selected) return;
     const now = new Date().toISOString();
+
+    if (selected.real) {
+      // Envío REAL por WhatsApp
+      const contacto = selected.id.slice(2);
+      const msg: Message = { id: `m_${Date.now()}`, sender: "maestro", text: text.trim(), at: now };
+      setReal((prev) => prev.map((c) => (c.id === selected.id ? { ...c, messages: [...c.messages, msg], lastAt: now } : c)));
+      setDraft("");
+      setSending(true);
+      fetch("/api/convos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", contacto, text: text.trim() }) })
+        .then(async (r) => { if (!r.ok) alert((await r.json()).error || "No se pudo enviar por WhatsApp"); })
+        .catch(() => alert("Error de conexión"))
+        .finally(() => setSending(false));
+      return;
+    }
+
     const msg: Message = { id: `m_${Date.now()}`, sender: "lana", text: text.trim(), at: now };
     setConvos((prev) =>
       prev.map((c) =>
@@ -72,6 +158,34 @@ export default function OmniInbox() {
       ),
     );
     setDraft("");
+  }
+
+  function pickFile() {
+    if (!selected?.real) {
+      alert("Los adjuntos funcionan en los chats REALES de WhatsApp 🖤 (este es de demostración)");
+      return;
+    }
+    fileRef.current?.click();
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f || !selected?.real) return;
+    setSending(true);
+    try {
+      const blob = await resizeImage(f);
+      const fd = new FormData();
+      fd.append("file", blob, "foto.jpg");
+      fd.append("contacto", selected.id.slice(2));
+      if (draft.trim()) fd.append("caption", draft.trim());
+      const r = await fetch("/api/convos", { method: "POST", body: fd });
+      const d = await r.json();
+      if (r.ok) { setReal(mapReal(d.convos || [])); setDraft(""); }
+      else alert(d.error || "No se pudo enviar la imagen");
+    } finally {
+      setSending(false);
+      e.target.value = "";
+    }
   }
 
   async function suggest() {
@@ -116,8 +230,8 @@ export default function OmniInbox() {
             {TABS.map((t) => {
               const n =
                 t.id === "all"
-                  ? convos.length
-                  : convos.filter((c) => c.channel === t.id).length;
+                  ? all.length
+                  : all.filter((c) => c.channel === t.id).length;
               const active = chFilter === t.id;
               return (
                 <button
@@ -142,7 +256,7 @@ export default function OmniInbox() {
             return (
               <button
                 key={c.id}
-                onClick={() => { setSelectedId(c.id); setMobileChat(true); }}
+                onClick={() => pick(c)}
                 className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition ${
                   active ? "bg-[#2a3942]" : "hover:bg-[#202c33]"
                 }`}
@@ -161,8 +275,11 @@ export default function OmniInbox() {
                 </div>
                 <div className="min-w-0 flex-1 border-b border-white/5 pb-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="truncate text-sm font-medium text-[#e9edef]">
-                      {c.contact.name}
+                    <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-[#e9edef]">
+                      <span className="truncate">{c.contact.name}</span>
+                      {(c as Item).real && (
+                        <span className="shrink-0 rounded bg-[#00a884]/20 px-1 py-0.5 text-[8px] font-bold tracking-wide text-[#00a884]">EN VIVO</span>
+                      )}
                     </span>
                     <span className="text-[10px] text-[#8696a0]">
                       {timeOf(c.lastAt)}
@@ -215,6 +332,7 @@ export default function OmniInbox() {
               style={{ color: CHANNEL_COLOR[selected.channel] }}
             >
               {chIcon(selected.channel, 11)} {CHANNEL_LABELS[selected.channel]}
+              {selected.real && <span className="text-[#00a884]"> · en vivo</span>}
               {selected.contact.city && (
                 <span className="text-[#8696a0]"> · {selected.contact.city}</span>
               )}
@@ -264,36 +382,47 @@ export default function OmniInbox() {
               </button>
             </div>
           )}
+          {emojiOpen && (
+            <div className="mb-2 flex gap-1.5">
+              {EMOJIS.map((e) => (
+                <button key={e} onClick={() => setDraft((d) => d + e)} className="rounded-lg bg-[#0b141a] px-2 py-1 text-lg transition hover:bg-[#2a3942]">
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={suggest}
               disabled={loading}
-              title="Ana sugiere el cierre"
+              title="Ana sugiere la respuesta"
               className="rounded-full p-1.5 text-gold transition hover:bg-white/5 disabled:opacity-50"
             >
               <Sparkles size={20} />
             </button>
-            <Smile size={22} className="text-[#8696a0]" />
-            <Paperclip size={20} className="text-[#8696a0]" />
+            <button onClick={() => setEmojiOpen((v) => !v)} title="Emojis" className={`rounded-full p-1 transition hover:bg-white/5 ${emojiOpen ? "text-[#00a884]" : "text-[#8696a0]"}`}>
+              <Smile size={22} />
+            </button>
+            <button onClick={pickFile} title="Adjuntar foto" className="rounded-full p-1 text-[#8696a0] transition hover:bg-white/5 hover:text-[#e9edef]">
+              <Paperclip size={20} />
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") send(draft);
               }}
-              placeholder={loading ? "Ana está escribiendo…" : "Escribe un mensaje"}
+              placeholder={sending ? "Enviando…" : loading ? "Ana está escribiendo…" : selected?.real ? "Escribe (se envía por WhatsApp real)" : "Escribe un mensaje"}
               className="flex-1 rounded-lg bg-[#2a3942] px-3 py-2 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
             />
-            {draft.trim() ? (
-              <button
-                onClick={() => send(draft)}
-                className="rounded-full bg-[#00a884] p-2 text-[#0b141a]"
-              >
-                <Send size={18} />
-              </button>
-            ) : (
-              <Mic size={22} className="text-[#8696a0]" />
-            )}
+            <button
+              onClick={() => send(draft)}
+              disabled={!draft.trim() || sending}
+              className="rounded-full bg-[#00a884] p-2 text-[#0b141a] disabled:opacity-40"
+            >
+              <Send size={18} />
+            </button>
           </div>
         </div>
       </div>
