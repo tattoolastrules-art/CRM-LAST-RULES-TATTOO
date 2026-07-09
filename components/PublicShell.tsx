@@ -11,10 +11,21 @@ const LINKS: [string, string][] = [
 
 const WA = "573204530194";
 
+const SITE_BASE = "https://lastrulestattoo.com/";
+
+// Las fotos viven en el hosting del sitio; si la ruta es relativa se completa
+// (así también se ven bien desde app.lastrulestattoo.com / Vercel)
+export function absUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  return SITE_BASE + url.replace(/^\/+/, "");
+}
+
 export function Thumb({ url, alt, h = "h-52" }: { url?: string; alt: string; h?: string }) {
-  if (url)
+  const src = absUrl(url);
+  if (src)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={alt} className={`w-full ${h} object-cover`} />;
+    return <img src={src} alt={alt} className={`w-full ${h} object-cover`} />;
   return (
     <div className={`flex w-full ${h} items-center justify-center bg-gradient-to-br from-[#1B2336] to-[#0F1522]`}>
       <span className="font-display text-3xl text-gold/40">{(alt || "?").charAt(0).toUpperCase()}</span>
