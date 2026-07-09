@@ -50,11 +50,11 @@ const seeds: Seed[] = [
       ["coleccionista", "Hola, vi su Instagram. Quiero un león en el antebrazo", 240],
       ["lana", "Hola, qué gusto saludarte 🖤 Un león en dark work en el antebrazo queda imponente. ¿De qué tamaño lo imaginas y tienes alguna referencia? ✨", 239],
       ["coleccionista", "Como de 15 cm, en sombras. Sin tatuajes ahí todavía", 238],
-      ["lana", "Perfecto: león dark work, antebrazo, ~15 cm 🖤 Lo paso a Los Maestros para tu Composición Maestra a la medida. Para asegurar tu cupo trabajamos con un abono de $100.000 que se descuenta del total. ¿Te queda mejor entre semana o el fin de semana? 👑", 236],
+      ["lana", "Perfecto: león dark work, antebrazo, ~15 cm 🖤 Lo paso a los tatuadores para tu diseño único hecho para ti a la medida. Para asegurar tu cupo trabajamos con un abono de $100.000 que se descuenta del total. ¿Te queda mejor entre semana o el fin de semana? 👑", 236],
       ["coleccionista", "Fin de semana mejor", 233],
-      ["lana", "Genial ✨ Te paso con el agendamiento para apartar tu sábado antes de que se llene la agenda de Los Maestros 🖤", 232],
+      ["lana", "Genial ✨ Te paso con el agendamiento para apartar tu sábado antes de que se llene la agenda de los tatuadores 🖤", 232],
       ["coleccionista", "Listo ya hice el abono, ahí les mando el comprobante", 60],
-      ["lana", "¡Recibido! 🖤 Tu cupo quedó asegurado. Te esperamos en El Templo 👑", 58],
+      ["lana", "¡Recibido! 🖤 Tu cupo quedó asegurado. Te esperamos en el estudio 👑", 58],
     ],
   },
   {
@@ -71,9 +71,9 @@ const seeds: Seed[] = [
     hue: 320,
     msgs: [
       ["coleccionista", "holaa cuanto vale un tatuaje de flores en el brazo?", 95],
-      ["lana", "Hola, qué gusto saludarte 🤍 El valor de la Pieza depende del diseño, zona, tamaño y complejidad, por eso lo cotiza un Maestro a tu medida. Cuéntame: ¿línea fina o con sombras, y qué tan grande la imaginas? ✨", 94],
+      ["lana", "Hola, qué gusto saludarte 🤍 El valor de el tatuaje depende del diseño, zona, tamaño y complejidad, por eso lo cotiza un tatuador a tu medida. Cuéntame: ¿línea fina o con sombras, y qué tan grande la imaginas? ✨", 94],
       ["coleccionista", "linea fina, algo delicado, del codo hacia abajo", 90],
-      ["lana", "Hermoso 🖤 Eso luce elegante en línea fina. Te propongo algo: agenda una asesoría gratis en El Templo y aterrizamos tu Composición Maestra sin compromiso. ¿Te sirve esta semana o la próxima? 👑", 88],
+      ["lana", "Hermoso 🖤 Eso luce elegante en línea fina. Te propongo algo: agenda una asesoría gratis en el estudio y aterrizamos tu diseño único hecho para ti sin compromiso. ¿Te sirve esta semana o la próxima? 👑", 88],
     ],
   },
   {
@@ -89,7 +89,7 @@ const seeds: Seed[] = [
     hue: 210,
     msgs: [
       ["coleccionista", "buenas, estoy en medellin, ustedes hacen mangas completas?", 50],
-      ["lana", "Buenas, qué gusto 🖤 Claro, las mangas son de nuestras Obras favoritas. Atendemos Coleccionistas de toda Colombia. ¿Prefieres viajar a Bogotá para tu sesión o que te contemos de nuestras giras? ✨", 49],
+      ["lana", "Buenas, qué gusto 🖤 Claro, las mangas son de nuestras tatuajes favoritas. Atendemos clientes de toda Colombia. ¿Prefieres viajar a Bogotá para tu sesión o que te contemos de nuestras giras? ✨", 49],
       ["coleccionista", "viajaria a bogota, pero quiero ver como seria primero", 47],
       ["lana", "Perfecto 👑 Agendemos una asesoría (puede ser por videollamada) para diseñar tu manga y planear los días. Así aprovechas el viaje al máximo. ¿Qué día te queda bien? 🖤", 45],
     ],
@@ -108,9 +108,9 @@ const seeds: Seed[] = [
     hue: 12,
     msgs: [
       ["coleccionista", "Quiero un retrato de mi abuela en la espalda, es muy importante para mí", 180],
-      ["lana", "Qué bonito homenaje 🤍 Un retrato pide manos de Maestro y se hace a mano alzada para que quede único. ¿Tienes una foto de buena luz que podamos usar de referencia? 🖤", 179],
+      ["lana", "Qué bonito homenaje 🤍 Un retrato pide manos de tatuador y se hace a mano alzada para que quede único. ¿Tienes una foto de buena luz que podamos usar de referencia? 🖤", 179],
       ["coleccionista", "sí tengo varias", 176],
-      ["lana", "Perfecto ✨ Los Maestros revisaron y es un proyecto precioso de una sesión larga. Para apartar tu cupo va el abono de $100.000 que se descuenta. ¿Agendamos para esta quincena antes de que se llene? 👑", 120],
+      ["lana", "Perfecto ✨ los tatuadores revisaron y es un proyecto precioso de una sesión larga. Para apartar tu cupo va el abono de $100.000 que se descuenta. ¿Agendamos para esta quincena antes de que se llene? 👑", 120],
       ["coleccionista", "listo agendemos", 90],
     ],
   },
@@ -128,9 +128,9 @@ const seeds: Seed[] = [
     hue: 280,
     msgs: [
       ["coleccionista", "uff y eso esta caro, no hacen descuento?", 70],
-      ["lana", "Entiendo 🤍 En LAST RULES cada Obra es un Diseño de Autor a mano alzada hecho para tu anatomía, no una plantilla — por eso no manejamos descuentos. Pero podemos ajustar el tamaño o la zona a tu presupuesto. ¿Cuánto tenías pensado invertir? 🖤", 69],
+      ["lana", "Entiendo 🤍 En LAST RULES cada tatuaje es un Diseño de Autor a mano alzada hecho para tu anatomía, no una plantilla — por eso no manejamos descuentos. Pero podemos ajustar el tamaño o la zona a tu presupuesto. ¿Cuánto tenías pensado invertir? 🖤", 69],
       ["coleccionista", "pues algo razonable, el pecho completo", 66],
-      ["lana", "Te propongo arrancar por una primera etapa potente y crecer la Pieza por sesiones — así cuidas el bolsillo y el resultado 👑 ¿Agendamos una asesoría gratis para definirlo? ✨", 64],
+      ["lana", "Te propongo arrancar por una primera etapa potente y crecer el tatuaje por sesiones — así cuidas el bolsillo y el resultado 👑 ¿Agendamos una asesoría gratis para definirlo? ✨", 64],
     ],
   },
   {
@@ -147,9 +147,9 @@ const seeds: Seed[] = [
       ["coleccionista", "hola quiero tatuarme algo pero no sé qué", 200],
       ["lana", "Hola, qué rico ese momento 🖤 Para eso somos perfectos. ¿Lo imaginas más visible (brazo, pierna) o íntimo (costado, espalda)? Y dime: ¿te llama lo minimalista o algo con más presencia? ✨", 199],
       ["coleccionista", "algo elegante pero no muy grande, visible", 197],
-      ["lana", "Línea fina o un detalle dark work pequeño te quedarían divinos 👑 Lo mejor: agenda una asesoría gratis y entre todos aterrizamos tu Composición Maestra en persona. ¿Jueves o sábado? 🖤", 195],
+      ["lana", "Línea fina o un detalle dark work pequeño te quedarían divinos 👑 Lo mejor: agenda una asesoría gratis y entre todos aterrizamos tu diseño único hecho para ti en persona. ¿Jueves o sábado? 🖤", 195],
       ["coleccionista", "sábado", 193],
-      ["lana", "¡Listo! Te espero el sábado en El Templo ✨ Trae cualquier referencia que te guste, aunque sea suelta 🤍", 192],
+      ["lana", "¡Listo! Te espero el sábado en el estudio ✨ Trae cualquier referencia que te guste, aunque sea suelta 🤍", 192],
     ],
   },
   {
@@ -164,9 +164,9 @@ const seeds: Seed[] = [
     hue: 45,
     msgs: [
       ["coleccionista", "vienen a cali? me encanta su trabajo", 33],
-      ["lana", "¡Gracias, qué honor! 🖤 Hacemos giras según la agenda de viajes y la demanda en cada ciudad. En Cali estamos sumando Coleccionistas interesados. ¿Quieres que te apartemos un cupo prioritario para la próxima gira? ✨", 32],
+      ["lana", "¡Gracias, qué honor! 🖤 Hacemos giras según la agenda de viajes y la demanda en cada ciudad. En Cali estamos sumando clientes interesados. ¿Quieres que te apartemos un cupo prioritario para la próxima gira? ✨", 32],
       ["coleccionista", "siiii por favor", 30],
-      ["lana", "Genial 👑 Te dejo en la lista prioritaria de Cali. Cuéntame tu idea para que Los Maestros la vayan preparando 🖤", 28],
+      ["lana", "Genial 👑 Te dejo en la lista prioritaria de Cali. Cuéntame tu idea para que los tatuadores la vayan preparando 🖤", 28],
     ],
   },
   {
@@ -186,7 +186,7 @@ const seeds: Seed[] = [
       ["coleccionista", "Hallo, macht ihr geometrische blackwork tattoos?", 140],
       ["lana", "Hallo, schön dich zu lesen 🖤 Ja, geometrisches Blackwork ist eine unserer Spezialitäten. Welche Stelle und welche Größe stellst du dir vor? ✨", 139],
       ["coleccionista", "an der Wade, mittelgroß. Ich reise im August nach Bogotá", 137],
-      ["lana", "Perfekt 👑 Lass uns eine kostenlose Beratung machen, um deine Composición Maestra zu entwerfen und deine Sitzung im August zu sichern. Welche Woche passt dir? 🤍", 134],
+      ["lana", "Perfekt 👑 Lass uns eine kostenlose Beratung machen, um deine diseño único hecho para ti zu entwerfen und deine Sitzung im August zu sichern. Welche Woche passt dir? 🤍", 134],
     ],
   },
   {
@@ -202,7 +202,7 @@ const seeds: Seed[] = [
     hue: 8,
     msgs: [
       ["coleccionista", "cuanto una frase pequeña en el brazo", 1440],
-      ["lana", "Hola 🖤 Una frase fina luce muy elegante. El valor lo define un Maestro según tamaño y ubicación. ¿La quieres delgada tipo caligrafía? Cuéntame y te ayudo a aterrizarla ✨", 1439],
+      ["lana", "Hola 🖤 Una frase fina luce muy elegante. El valor lo define un tatuador según tamaño y ubicación. ¿La quieres delgada tipo caligrafía? Cuéntame y te ayudo a aterrizarla ✨", 1439],
       ["coleccionista", "lo voy a pensar", 1438],
       ["lana", "Claro, tómate tu tiempo 🤍 Cuando quieras te aparto un cupo. Te dejo nuestro IG para que te inspires: @last_rules_tattoo 👑", 1437],
     ],
@@ -222,11 +222,11 @@ const seeds: Seed[] = [
     hue: 300,
     msgs: [
       ["coleccionista", "quiero una serpiente por la columna, fine line", 110],
-      ["lana", "Qué elegancia 🖤 La columna pide pulso de Maestro y queda espectacular en fine line. ¿La imaginas larga siguiendo la espalda? ✨", 109],
+      ["lana", "Qué elegancia 🖤 La columna pide pulso de tatuador y queda espectacular en fine line. ¿La imaginas larga siguiendo la espalda? ✨", 109],
       ["coleccionista", "sí larga, unos 25 cm. cuando podría?", 106],
       ["lana", "Tengo cupos esta semana antes de que se llenen 👑 Para apartarlo va el abono de $100.000 (se descuenta del total). ¿Te paso los datos para asegurar tu fecha? 🖤", 104],
       ["coleccionista", "dale pásame los datos", 100],
-      ["lana", "Listo ✨ Nequi/Daviplata 3227062595 a nombre de LAST RULES TATTOO. Apenas hagas el abono mándame el comprobante por aquí y queda confirmada tu Pieza 🤍", 99],
+      ["lana", "Listo ✨ Nequi/Daviplata 3227062595 a nombre de LAST RULES TATTOO. Apenas hagas el abono mándame el comprobante por aquí y queda confirmada tu tatuaje 🤍", 99],
     ],
   },
   {
@@ -242,9 +242,9 @@ const seeds: Seed[] = [
     hue: 100,
     msgs: [
       ["coleccionista", "tengo un tatuaje viejo que quiero tapar, se puede?", 75],
-      ["lana", "Claro que sí 🖤 Un cover bien hecho transforma por completo. Los Maestros son expertos en eso. ¿Me mandas una foto con buena luz del actual y me dices qué te gustaría encima? ✨", 74],
+      ["lana", "Claro que sí 🖤 Un cover bien hecho transforma por completo. los tatuadores son expertos en eso. ¿Me mandas una foto con buena luz del actual y me dices qué te gustaría encima? ✨", 74],
       ["coleccionista", "ya te la mando. quiero algo dark", 71],
-      ["lana", "Perfecto, el dark work es ideal para cubrir 👑 Con la foto Los Maestros diseñan tu Composición Maestra. ¿Agendamos una asesoría gratis para verlo en persona? 🤍", 69],
+      ["lana", "Perfecto, el dark work es ideal para cubrir 👑 Con la foto los tatuadores diseñan tu diseño único hecho para ti. ¿Agendamos una asesoría gratis para verlo en persona? 🤍", 69],
     ],
   },
   {
@@ -278,9 +278,9 @@ const seeds: Seed[] = [
     hue: 260,
     msgs: [
       ["coleccionista", "quiero un ojo en microrealismo pero me da miedo el dolor 😬", 88],
-      ["lana", "Te entiendo 🤍 Te soy honesta: se siente, pero en el brazo es de las zonas más llevables y Los Maestros manejan el ritmo con pausas. El microrealismo ahí queda impecable 🖤 ¿Lo quieres pequeño y discreto o con más detalle? ✨", 87],
+      ["lana", "Te entiendo 🤍 Te soy honesta: se siente, pero en el brazo es de las zonas más llevables y los tatuadores manejan el ritmo con pausas. El microrealismo ahí queda impecable 🖤 ¿Lo quieres pequeño y discreto o con más detalle? ✨", 87],
       ["coleccionista", "pequeño y discreto", 85],
-      ["lana", "Perfecto para una primera Obra 👑 Te propongo una asesoría gratis para definir tamaño exacto y que conozcas El Templo. ¿Esta semana te sirve? 🖤", 83],
+      ["lana", "Perfecto para una primera tatuaje 👑 Te propongo una asesoría gratis para definir tamaño exacto y que conozcas el estudio. ¿Esta semana te sirve? 🖤", 83],
     ],
   },
   {
@@ -295,7 +295,7 @@ const seeds: Seed[] = [
     hue: 0,
     msgs: [
       ["coleccionista", "oigan no me gustó como me quedó la pieza que me hicieron", 40],
-      ["lana", "Lamento mucho que no estés satisfecho con el resultado de tu Pieza 🖤 Quiero que quedes feliz. Te conecto con el director artístico, quien te escribirá en breve para revisarlo personalmente 🤍", 39],
+      ["lana", "Lamento mucho que no estés satisfecho con el resultado de tu tatuaje 🖤 Quiero que quedes feliz. Te conecto con el director artístico, quien te escribirá en breve para revisarlo personalmente 🤍", 39],
     ],
   },
   {
@@ -315,7 +315,7 @@ const seeds: Seed[] = [
       ["coleccionista", "me encantó un mandala que vi en su feed, quiero algo así en el hombro", 130],
       ["lana", "¡Qué buen ojo! 🖤 El mandala fluye precioso en el hombro. Recuerda que creamos uno único tuyo, no una copia. ¿De qué tamaño lo imaginas? ✨", 129],
       ["coleccionista", "mediano, que baje un poco al brazo", 127],
-      ["lana", "Hermoso 👑 Los Maestros lo cotizaron y es una Obra de una sesión. Para apartar tu cupo va el abono de $100.000 que se descuenta. ¿Agendamos para este fin de semana? 🤍", 96],
+      ["lana", "Hermoso 👑 los tatuadores lo cotizaron y es una tatuaje de una sesión. Para apartar tu cupo va el abono de $100.000 que se descuenta. ¿Agendamos para este fin de semana? 🤍", 96],
       ["coleccionista", "siii", 92],
     ],
   },
@@ -333,9 +333,9 @@ const seeds: Seed[] = [
     hue: 220,
     msgs: [
       ["coleccionista", "seria mi primer tatuaje, un lettering en el antebrazo", 64],
-      ["lana", "Qué emoción tu primera Obra 🖤 El lettering en el antebrazo interno luce con mucha personalidad. ¿Ya tienes la frase y un estilo de letra en mente? ✨", 63],
+      ["lana", "Qué emoción tu primera tatuaje 🖤 El lettering en el antebrazo interno luce con mucha personalidad. ¿Ya tienes la frase y un estilo de letra en mente? ✨", 63],
       ["coleccionista", "si tengo la frase, algo tipo manuscrito", 61],
-      ["lana", "Manuscrito fino queda elegante y atemporal 👑 Los Maestros lo trazan a mano alzada para que sea único. ¿Agendamos una asesoría gratis para definir la composición? 🤍", 59],
+      ["lana", "Manuscrito fino queda elegante y atemporal 👑 los tatuadores lo trazan a mano alzada para que sea único. ¿Agendamos una asesoría gratis para definir la composición? 🤍", 59],
     ],
   },
 ];

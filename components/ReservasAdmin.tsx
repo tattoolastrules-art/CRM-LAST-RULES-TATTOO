@@ -14,7 +14,7 @@ const COLOR: Record<string, string> = { nuevo: "#5B8CB7", contactado: "#C5A059",
 
 export default function ReservasAdmin() {
   const [leads, setLeads] = useState<Lead[] | null>(null);
-  const [maestros, setMaestros] = useState<string[]>([]);
+  const [maestros, settatuadores] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [anova, setAnova] = useState<boolean | null>(null);
 
@@ -24,7 +24,7 @@ export default function ReservasAdmin() {
   }
   useEffect(() => {
     load();
-    fetch("/api/content").then((r) => r.json()).then((c) => setMaestros((c.tatuadores || []).map((t: { nombre: string }) => t.nombre))).catch(() => {});
+    fetch("/api/content").then((r) => r.json()).then((c) => settatuadores((c.tatuadores || []).map((t: { nombre: string }) => t.nombre))).catch(() => {});
     fetch("/api/settings").then((r) => (r.ok ? r.json() : null)).then((s) => s && setAnova(!!s.anovaAuto)).catch(() => {});
   }, []);
 
@@ -142,7 +142,7 @@ export default function ReservasAdmin() {
 
                   <select value={l.maestro || ""} onChange={(e) => upd(l.id, { maestro: e.target.value })} disabled={busy}
                     className="rounded-md border border-line bg-[#0f1522] px-2 py-1 text-[11px] text-bone-dim outline-none">
-                    <option value="">Asignar Maestro…</option>
+                    <option value="">Asignar tatuador…</option>
                     {maestros.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
 

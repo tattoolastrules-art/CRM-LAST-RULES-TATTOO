@@ -6,16 +6,16 @@ import { Power, ShieldCheck, Sparkles } from "lucide-react";
 const MODULOS = [
   { id: "flujos", label: "Flujos", desc: "Constructor de conversaciones" },
   { id: "omni", label: "Omnicanal", desc: "Inbox estilo WhatsApp" },
-  { id: "crm", label: "CRM", desc: "Dashboard de Coleccionistas" },
+  { id: "crm", label: "CRM", desc: "Dashboard de clientes" },
   { id: "reservas", label: "Reservas", desc: "Leads de la web y WhatsApp" },
   { id: "planner", label: "Planner", desc: "Planificador de marketing" },
-  { id: "agenda", label: "Agenda", desc: "Calendario de Los Maestros" },
+  { id: "agenda", label: "Agenda", desc: "Calendario de los tatuadores" },
   { id: "sitio", label: "Sitio", desc: "Contenido de la web pública" },
 ];
 
 // Ideas de evolución del sistema (requieren desarrollo de PRODY-G)
 const IDEAS = [
-  "Ana podría entender las fotos de referencia que envían los Coleccionistas y describirlas al Maestro.",
+  "Ana podría entender las fotos de referencia que envían los clientes y describirlas al tatuador.",
   "Recordatorios automáticos de cita por WhatsApp 24h y 2h antes — menos inasistencias.",
   "Reporte semanal automático de leads y cierres directo al WhatsApp del equipo.",
   "El Planner podría sugerir ideas de contenido con IA según tendencias de tatuaje.",

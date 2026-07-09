@@ -29,7 +29,7 @@ export default async function Home() {
             rel="noreferrer"
             className="rounded-xl bg-gold px-6 py-3 text-sm font-semibold text-navy transition hover:bg-gold-soft"
           >
-            Agenda tu Pieza
+            Agenda tu tatuaje
           </a>
           <Link
             href="/portafolio"
@@ -40,10 +40,10 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Obras destacadas */}
+      {/* Trabajos destacados */}
       <section className="px-5 md:px-10">
         <div className="mb-5 flex items-end justify-between">
-          <h2 className="font-display text-2xl text-bone">Obras destacadas</h2>
+          <h2 className="font-display text-2xl text-bone">Trabajos destacados</h2>
           <Link href="/portafolio" className="text-sm text-gold-soft hover:underline">
             Ver todo →
           </Link>

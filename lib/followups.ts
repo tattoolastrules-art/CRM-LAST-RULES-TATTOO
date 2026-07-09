@@ -16,13 +16,13 @@ export interface FollowConfig {
 // ★ = recomendado por el sistema (calidad de cicatrización + momento de reseña)
 const DEFAULTS: FollowConfig = {
   confirmMsg:
-    "¡Hola {nombre}! Te escribo de Last Rules 🖤 Mañana es tu cita en El Templo. Llega alimentad@, hidratad@ y con ropa cómoda. ¿Confirmas tu asistencia?",
+    "¡Hola {nombre}! Te escribo de Last Rules 🖤 Mañana es tu cita en el estudio. Llega alimentad@, hidratad@ y con ropa cómoda. ¿Confirmas tu asistencia?",
   steps: [
-    { id: "d1", dias: 1, msg: "¡Hola {nombre}! ¿Cómo amaneció tu Pieza? 🖤 Recuerda: jabón neutro 2 veces al día y crema sin fragancia en capa fina. Cualquier cosa rara, me escribes de una." },
+    { id: "d1", dias: 1, msg: "¡Hola {nombre}! ¿Cómo amaneció tu tatuaje? 🖤 Recuerda: jabón neutro 2 veces al día y crema sin fragancia en capa fina. Cualquier cosa rara, me escribes de una." },
     { id: "d4", dias: 4, msg: "¡Hola! ¿Cómo va la cicatrización? 🤍 Es normal que pique un poquito — no te rasques ni arranques las costritas. ¿Todo bien por allá?" },
-    { id: "d10", dias: 10, msg: "¡{nombre}! Ya casi 2 semanas de tu Obra ✨ ¿Cómo la ves? Si quieres, mándame una foto y la revisamos. Recuerda: nada de sol ni piscina todavía." },
-    { id: "d21", dias: 21, msg: "¿Cómo sigue tu Pieza? 🖤 A esta altura ya debe estar casi lista. Del 1 al 5, ¿qué tan feliz estás con el resultado?" },
-    { id: "d30", dias: 30, msg: "¡Hola {nombre}! Tu Obra cumple un mes 👑 Recuerda que tienes tu retoque de cortesía si lo necesitas. ¿Cómo te ha ido? Del 1 al 5, ¿cómo calificas tu experiencia en Last Rules?" },
+    { id: "d10", dias: 10, msg: "¡{nombre}! Ya casi 2 semanas de tu tatuaje ✨ ¿Cómo la ves? Si quieres, mándame una foto y la revisamos. Recuerda: nada de sol ni piscina todavía." },
+    { id: "d21", dias: 21, msg: "¿Cómo sigue tu tatuaje? 🖤 A esta altura ya debe estar casi lista. Del 1 al 5, ¿qué tan feliz estás con el resultado?" },
+    { id: "d30", dias: 30, msg: "¡Hola {nombre}! Tu tatuaje cumple un mes 👑 Recuerda que tienes tu retoque de cortesía si lo necesitas. ¿Cómo te ha ido? Del 1 al 5, ¿cómo calificas tu experiencia en Last Rules?" },
   ],
   reviewLink: "https://g.page/r/lastrulestattoo/review",
 };

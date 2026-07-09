@@ -12,7 +12,7 @@ const PASOS = [
   "Ana, asesora comercial: en línea",
   "NOVA, inteligencia del sistema: operativa",
   "CRM y reservas: sincronizados",
-  "Agenda de Los Maestros: cargada",
+  "Agenda de los tatuadores: cargada",
   "Sitio web: en vivo",
 ];
 

@@ -9,7 +9,7 @@ export default async function Portafolio() {
     <PublicShell>
       <section className="px-5 py-12 md:px-10">
         <h1 className="font-display text-3xl text-bone md:text-4xl">Portafolio</h1>
-        <p className="mt-2 text-sm text-bone-dim">Obras de Los Maestros de LAST RULES.</p>
+        <p className="mt-2 text-sm text-bone-dim">Trabajos del equipo de LAST RULES.</p>
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {c.publicaciones.map((p) => (

@@ -82,7 +82,7 @@ export default function CrmDashboard() {
   return (
     <div className="h-full overflow-y-auto p-5">
       <div className="mb-4 flex items-center justify-between">
-        <div className="font-display text-lg text-bone">CRM · Coleccionistas</div>
+        <div className="font-display text-lg text-bone">CRM · Clientes</div>
         <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-[11px] text-bone-dim">
           <input type="checkbox" checked={mostrarDemo} onChange={(e) => setMostrarDemo(e.target.checked)} className="accent-gold" />
           Incluir datos demo
@@ -139,7 +139,7 @@ export default function CrmDashboard() {
       <div className="glass overflow-hidden rounded-xl">
         <div className="flex items-center justify-between border-b border-line/60 px-4 py-2.5">
           <div className="text-sm font-medium text-bone">
-            Coleccionistas {filter !== "todos" && `· ${STAGE_LABELS[filter]}`}
+            Clientes {filter !== "todos" && `· ${STAGE_LABELS[filter]}`}
             <span className="ml-1 text-bone-dim">({rows.length})</span>
           </div>
           <div className="flex items-center gap-2 rounded-lg bg-navy-soft px-2.5 py-1">
@@ -156,7 +156,7 @@ export default function CrmDashboard() {
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wide text-bone-dim">
-              <th className="px-4 py-2 font-medium">Coleccionista</th>
+              <th className="px-4 py-2 font-medium">cliente</th>
               <th className="px-4 py-2 font-medium">Canal</th>
               <th className="px-4 py-2 font-medium">Idea / Servicio</th>
               <th className="px-4 py-2 font-medium">Etapa</th>

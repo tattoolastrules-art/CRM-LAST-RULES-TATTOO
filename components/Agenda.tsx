@@ -169,9 +169,9 @@ export default function Agenda() {
               <button onClick={() => setShowNew(false)} className="text-bone-dim hover:text-bone">✕</button>
             </div>
             <div className="space-y-2.5">
-              <input value={form.coleccionista} onChange={(e) => setForm({ ...form, coleccionista: e.target.value })} placeholder="Nombre del Coleccionista *"
+              <input value={form.coleccionista} onChange={(e) => setForm({ ...form, coleccionista: e.target.value })} placeholder="Nombre del cliente *"
                 className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none focus:border-gold/50" />
-              <input value={form.pieza} onChange={(e) => setForm({ ...form, pieza: e.target.value })} placeholder="Pieza / descripción"
+              <input value={form.pieza} onChange={(e) => setForm({ ...form, pieza: e.target.value })} placeholder="tatuaje / descripción"
                 className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none focus:border-gold/50" />
               <select value={form.maestroId} onChange={(e) => setForm({ ...form, maestroId: e.target.value })}
                 className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none">
@@ -211,7 +211,7 @@ export default function Agenda() {
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="font-display text-lg text-bone">Agenda · Los Maestros</div>
+          <div className="font-display text-lg text-bone">Agenda · Tatuadores</div>
           <div className="text-[11px] text-bone-dim">
             Semana del {monday.getDate()} ·{" "}
             {monday.toLocaleDateString("es-CO", { month: "long", year: "numeric" })}
@@ -275,7 +275,7 @@ export default function Agenda() {
         </div>
       )}
 
-      {/* Filtro de Maestros */}
+      {/* Filtro de tatuadores */}
       <div className="mb-3 flex flex-wrap gap-2">
         {MAESTROS.map((m) => (
           <button

@@ -9,8 +9,8 @@ export default async function Tatuadores() {
   return (
     <PublicShell>
       <section className="px-5 py-12 md:px-10">
-        <h1 className="font-display text-3xl text-bone md:text-4xl">Los Maestros</h1>
-        <p className="mt-2 text-sm text-bone-dim">El equipo que da vida a tu Obra.</p>
+        <h1 className="font-display text-3xl text-bone md:text-4xl">Nuestros artistas</h1>
+        <p className="mt-2 text-sm text-bone-dim">El equipo de Last Rules.</p>
 
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {tatuadores.map((t) => (

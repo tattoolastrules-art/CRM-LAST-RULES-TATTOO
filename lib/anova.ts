@@ -27,24 +27,24 @@ export function randomWelcome() {
 const TYPE_REPLIES: Record<string, string[]> = {
   sticker: [
     "Jaja buenísimo 🖤 Bueno, cuéntame… ¿qué idea traes en mente para tu piel?",
-    "Me encantó jaja 🤍 Y dime, ¿ya tienes pensada tu próxima Pieza?",
+    "Me encantó jaja 🤍 Y dime, ¿ya tienes pensada tu próxima tatuaje?",
   ],
   audio: [
-    "¡Te escuché! Dame un momento… mientras tanto, ¿me resumes la idea en texto? Así se la paso exacta a Los Maestros 🖤",
+    "¡Te escuché! Dame un momento… mientras tanto, ¿me resumes la idea en texto? Así se la paso exacta a los tatuadores 🖤",
     "Recibí tu nota de voz 🤍 Para no perder ningún detalle, ¿me lo escribes en un mensajito? Y de una lo movemos.",
   ],
   video: [
     "¡Vi el video! Qué buena referencia 🖤 ¿En qué zona del cuerpo lo imaginas y de qué tamaño más o menos?",
-    "Recibido el video 🤍 Cuéntame, ¿esa es la idea que quieres para tu Pieza?",
+    "Recibido el video 🤍 Cuéntame, ¿esa es la idea que quieres para tu tatuaje?",
   ],
   document: [
-    "Recibí el archivo 🤍 Lo reviso con Los Maestros. Cuéntame mientras tanto, ¿qué tienes en mente?",
+    "Recibí el archivo 🤍 Lo reviso con los tatuadores. Cuéntame mientras tanto, ¿qué tienes en mente?",
   ],
   location: [
     "¡Gracias por la ubicación! Nosotros estamos en Cl. 52 #25-14, Galerías 📍 ¿Agendamos tu visita? 🖤",
   ],
   contacts: [
-    "¡Recibido el contacto! 🤍 ¿Le digo a esa persona que escriba, o me cuentas tú qué Pieza tienen en mente?",
+    "¡Recibido el contacto! 🤍 ¿Le digo a esa persona que escriba, o me cuentas tú qué tatuaje tienen en mente?",
   ],
   image: [
     "¡La vi! Buena referencia 🖤 Cuéntame: ¿en qué zona del cuerpo la imaginas y de qué tamaño aprox?",
@@ -69,7 +69,7 @@ export async function anovaVision(
     const client = new Anthropic();
     const system =
       buildSystemPrompt() +
-      "\n\nEl Coleccionista acaba de enviarte una IMAGEN por WhatsApp (probablemente una referencia de tatuaje). Mira la imagen, coméntala breve y con criterio de asesora de arte (qué es, qué estilo se le ve), y avanza: pregunta zona del cuerpo o tamaño. Responde ÚNICAMENTE con el mensaje (2-4 frases).";
+      "\n\nEl cliente acaba de enviarte una IMAGEN por WhatsApp (probablemente una referencia de tatuaje). Mira la imagen, coméntala breve y con criterio de asesora de arte (qué es, qué estilo se le ve), y avanza: pregunta zona del cuerpo o tamaño. Responde ÚNICAMENTE con el mensaje (2-4 frases).";
     const r = await client.messages.create({
       model: process.env.LANA_MODEL || "claude-haiku-4-5",
       max_tokens: 300,
@@ -79,7 +79,7 @@ export async function anovaVision(
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mime as "image/jpeg", data: b64 } },
-            { type: "text", text: `Mensaje de ${name || "un Coleccionista"}${caption ? ': "' + caption + '"' : " (imagen sin texto)"}` },
+            { type: "text", text: `Mensaje de ${name || "un cliente"}${caption ? ': "' + caption + '"' : " (imagen sin texto)"}` },
           ],
         },
       ],
@@ -108,12 +108,12 @@ export async function anovaReply(
     const link = (await getFollowConfig().catch(() => null))?.reviewLink || "";
     if (n >= 4) {
       return {
-        reply: `¡Nos alegra muchísimo! 🖤 ¿Nos regalas esas ${n === 5 ? "5 estrellas" : "estrellas"} en Google? Nos ayuda un montón a que más Coleccionistas nos encuentren: ${link} ✨`.trim(),
+        reply: `¡Nos alegra muchísimo! 🖤 ¿Nos regalas esas ${n === 5 ? "5 estrellas" : "estrellas"} en Google? Nos ayuda un montón a que más clientes nos encuentren: ${link} ✨`.trim(),
         mode: "predefinida",
       };
     }
     return {
-      reply: "Gracias por la sinceridad 🤍 Queremos que quedes 100% feliz con tu Pieza. Ya mismo le paso tu caso al director artístico para revisarlo personalmente — te escribimos hoy.",
+      reply: "Gracias por la sinceridad 🤍 Queremos que quedes 100% feliz con tu tatuaje. Ya mismo le paso tu caso al director artístico para revisarlo personalmente — te escribimos hoy.",
       mode: "predefinida",
     };
   }
@@ -134,13 +134,13 @@ export async function anovaReply(
   const client = new Anthropic();
   const system =
     buildSystemPrompt() +
-    "\n\nEstás respondiendo por WhatsApp. Responde ÚNICAMENTE con el mensaje para el Coleccionista: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda." +
+    "\n\nEstás respondiendo por WhatsApp. Responde ÚNICAMENTE con el mensaje para el cliente: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda." +
     (guide ? "\n\nMENSAJES APROBADOS DEL ESTUDIO (síguelos como guía de tono y contenido):\n" + guide : "");
   const r = await client.messages.create({
     model: process.env.LANA_MODEL || "claude-haiku-4-5",
     max_tokens: 300,
     system,
-    messages: [{ role: "user", content: `Mensaje de ${name || "un Coleccionista"}: ${t}` }],
+    messages: [{ role: "user", content: `Mensaje de ${name || "un cliente"}: ${t}` }],
   });
   const reply = r.content
     .filter((b) => b.type === "text")

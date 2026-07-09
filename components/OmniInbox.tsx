@@ -364,7 +364,7 @@ export default function OmniInbox() {
                 >
                   {m.sender === "maestro" && (
                     <div className="mb-0.5 text-[10px] font-semibold text-[#00a884]">
-                      Los Maestros
+                      los tatuadores
                     </div>
                   )}
                   {(m as Message & { img?: string }).img && (
