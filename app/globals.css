@@ -116,6 +116,35 @@ html[data-theme="light"] *::-webkit-scrollbar-thumb {
   background: rgba(154, 122, 46, 0.35);
 }
 
+/* ===== Secuencia de encendido: hojas de ginkgo + circuito ===== */
+@keyframes leafFall {
+  0%   { transform: translateY(-14vh) rotate(0deg) translateX(0); }
+  25%  { transform: translateY(22vh) rotate(100deg) translateX(26px); }
+  50%  { transform: translateY(52vh) rotate(200deg) translateX(-20px); }
+  75%  { transform: translateY(82vh) rotate(300deg) translateX(20px); }
+  100% { transform: translateY(114vh) rotate(400deg) translateX(-10px); }
+}
+.circuit-line {
+  stroke-dasharray: 170;
+  stroke-dashoffset: 170;
+  animation: circuitDraw 1.7s cubic-bezier(0.3, 0.8, 0.3, 1) forwards;
+}
+.circuit-dot {
+  opacity: 0;
+  animation: circuitBlink 1.6s ease-in-out infinite 1.5s;
+}
+@keyframes circuitDraw { to { stroke-dashoffset: 0; } }
+@keyframes circuitBlink { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+@keyframes bootFlash {
+  0% { opacity: 0; transform: scale(0.6); }
+  35% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+.boot-flash {
+  animation: bootFlash 1.6s ease-out forwards;
+  background: radial-gradient(circle, rgba(197, 160, 89, 0.5) 0%, rgba(197, 160, 89, 0.15) 40%, transparent 70%);
+}
+
 /* React Flow: integrar al tema oscuro */
 .react-flow,
 .react-flow__renderer {
