@@ -55,7 +55,6 @@ function mapReal(list: Array<Record<string, unknown>>): Item[] {
     real: true,
   })) as unknown as Item[];
 }
-import { SEED_CONVERSATIONS } from "@/lib/seed-conversations";
 import { CHANNEL_LABELS } from "@/lib/types";
 import { CHANNEL_COLOR } from "@/lib/brand";
 
@@ -71,8 +70,8 @@ function timeOf(iso: string) {
 }
 
 export default function OmniInbox() {
-  const [convos, setConvos] = useState<Conversation[]>(SEED_CONVERSATIONS);
-  const [selectedId, setSelectedId] = useState<string>(SEED_CONVERSATIONS[0].id);
+  const [convos, setConvos] = useState<Conversation[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -198,6 +197,7 @@ export default function OmniInbox() {
   }
 
   async function suggest() {
+    if (!selected) return;
     setLoading(true);
     try {
       const res = await fetch("/api/chat", {
@@ -321,6 +321,13 @@ export default function OmniInbox() {
           backgroundSize: "22px 22px",
         }}
       >
+        {!selected ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+            <span className="text-3xl">🖤</span>
+            <span className="text-sm text-[#8696a0]">Aún no hay conversaciones.</span>
+            <span className="text-xs text-[#8696a0]/70">Cuando escriban por WhatsApp, Instagram o Messenger aparecerán aquí en vivo.</span>
+          </div>
+        ) : (<>
         {/* Header */}
         <div className="flex items-center gap-3 bg-[#202c33] px-4 py-2">
           <button onClick={() => setMobileChat(false)} className="-ml-1 text-[#8696a0] hover:text-[#e9edef] sm:hidden" aria-label="Volver">
@@ -443,6 +450,7 @@ export default function OmniInbox() {
             </button>
           </div>
         </div>
+        </>)}
       </div>
     </div>
   );

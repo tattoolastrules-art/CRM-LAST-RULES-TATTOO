@@ -5,7 +5,6 @@ import { Camera, ThumbsUp, MessageCircleMore, Search, Globe, Users, Flame, Troph
 import type { Channel, Stage } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 import { STAGE_COLOR, CHANNEL_COLOR } from "@/lib/brand";
-import { SEED_CONVERSATIONS } from "@/lib/seed-conversations";
 
 type Row = {
   id: string;
@@ -37,7 +36,6 @@ export default function CrmDashboard() {
   const [filter, setFilter] = useState<Stage | "todos">("todos");
   const [q, setQ] = useState("");
   const [webLeads, setWebLeads] = useState<Row[]>([]);
-  const [mostrarDemo, setMostrarDemo] = useState(false);
 
   useEffect(() => {
     fetch("/api/lead")
@@ -58,7 +56,7 @@ export default function CrmDashboard() {
       .catch(() => {});
   }, []);
 
-  const leads: Row[] = mostrarDemo ? [...webLeads, ...(SEED_CONVERSATIONS as unknown as Row[])] : webLeads;
+  const leads: Row[] = webLeads;
 
   const count = (s: Stage) => leads.filter((l) => l.stage === s).length;
   const enCierre = leads.filter((l) => ["agendando", "abono", "cerrado", "asesoria"].includes(l.stage)).length;
@@ -83,10 +81,6 @@ export default function CrmDashboard() {
     <div className="h-full overflow-y-auto p-5">
       <div className="mb-4 flex items-center justify-between">
         <div className="font-display text-lg text-bone">CRM · Clientes</div>
-        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-navy-soft px-3 py-1.5 text-[11px] text-bone-dim">
-          <input type="checkbox" checked={mostrarDemo} onChange={(e) => setMostrarDemo(e.target.checked)} className="accent-gold" />
-          Incluir datos demo
-        </label>
       </div>
       {/* KPIs */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">

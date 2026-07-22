@@ -5,7 +5,6 @@ import { CalendarPlus, Clock, Check, RefreshCw, Plus, HeartPulse } from "lucide-
 import FollowupsPanel from "./FollowupsPanel";
 import {
   MAESTROS,
-  APPOINTMENTS,
   HOURS,
   DAY_NAMES,
   mondayOf,
@@ -70,8 +69,6 @@ export default function Agenda() {
     d.setDate(d.getDate() + i);
     return d.getDate();
   };
-  const maestroOf = (id: string) => MAESTROS.find((m) => m.id === id)!;
-  const visible = APPOINTMENTS.filter((a) => !hidden.has(a.maestroId));
 
   // estado de Google + ?gcal=
   useEffect(() => {
@@ -374,41 +371,6 @@ export default function Agenda() {
                 <div className="truncate" style={{ color: m.color }}>{[c.estilo, c.pieza].filter(Boolean).join(" · ")}</div>
                 <div className="flex items-center gap-1 text-[9px] text-bone-dim">
                   <Clock size={9} /> {c.start}:00–{c.start + c.durHours}:00 · {m.nombre}
-                </div>
-              </div>
-            );
-          })}
-
-          {/* citas del estudio (demo — se ocultan cuando ya hay citas reales) */}
-          {citas.length === 0 && visible.map((a) => {
-            const m = maestroOf(a.maestroId);
-            const row = a.start - HOURS[0] + 2;
-            return (
-              <div
-                key={a.id}
-                className="m-0.5 overflow-hidden rounded-md px-2 py-1 text-[11px] leading-tight"
-                style={{
-                  gridColumn: a.day + 2,
-                  gridRow: `${row} / span ${a.durHours}`,
-                  background: m.color + "26",
-                  borderLeft: `3px solid ${m.color}`,
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-bone">{a.coleccionista}</span>
-                  {a.type === "asesoria" ? (
-                    <span className="text-[9px] text-bone-dim">asesoría</span>
-                  ) : (
-                    <span className="text-[9px]" style={{ color: a.abono ? "#3FB37F" : "#D8A24A" }}>
-                      {a.abono ? "abono ✓" : "abono pend."}
-                    </span>
-                  )}
-                </div>
-                <div className="truncate" style={{ color: m.color }}>
-                  {a.pieza}
-                </div>
-                <div className="flex items-center gap-1 text-[9px] text-bone-dim">
-                  <Clock size={9} /> {a.start}:00–{a.start + a.durHours}:00 · {m.name}
                 </div>
               </div>
             );
