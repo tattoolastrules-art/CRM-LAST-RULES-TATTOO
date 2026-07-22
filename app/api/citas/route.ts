@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const citas = await upsertCita(b.item);
     if (esNueva) {
       const c = b.item;
-      notifyStudio(`📅 NUEVA CITA (manual)\n${c.coleccionista || "?"}${c.pieza ? " · " + c.pieza : ""}\n🗓 ${c.fecha} ${c.start}:00 (${c.durHours || 1}h)\n${c.tipo === "asesoria" ? "Asesoría" : "Sesión"}${c.abono ? " · abono ✓" : ""}`).catch(() => {});
+      notifyStudio(`📅 NUEVA CITA (manual)\n${c.coleccionista || "?"}${c.pieza ? " · " + c.pieza : ""}${c.estilo ? "\n🎨 " + c.estilo : ""}\n🗓 ${c.fecha} ${c.start}:00 (${c.durHours || 1}h)\n${c.tipo === "asesoria" ? "Asesoría" : "Sesión"}${c.abono ? " · abono ✓" : ""}`).catch(() => {});
     }
     return Response.json({ citas });
   }

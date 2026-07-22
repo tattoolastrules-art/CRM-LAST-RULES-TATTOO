@@ -21,8 +21,12 @@ interface GEvent {
 interface CitaReal {
   id: string; maestroId: string; coleccionista: string; pieza: string;
   fecha: string; start: number; durHours: number; tipo: string; abono: boolean;
+  estilo?: string;
 }
 type CitaForm = Omit<CitaReal, "id" | "tipo"> & { tipo: "sesion" | "asesoria" };
+
+const PALETA = ["#C5A059", "#5B8CB7", "#8E7CC3", "#3FB37F", "#D8A24A", "#E1306C", "#37C7C0", "#B75B5B"];
+const ESTILOS = ["Realismo", "Fine line", "Blackwork", "Neo tradicional", "Lettering", "Cover up", "Color", "Freehand", "Sombras", "Piercing", "Otro"];
 
 function isoDe(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -38,7 +42,27 @@ export default function Agenda() {
   const [citas, setCitas] = useState<CitaReal[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [syncG, setSyncG] = useState(true);
-  const [form, setForm] = useState<CitaForm>({ coleccionista: "", pieza: "", maestroId: MAESTROS[0].id, fecha: "", start: 14, durHours: 2, tipo: "sesion", abono: false });
+  const [form, setForm] = useState<CitaForm>({ coleccionista: "", pieza: "", maestroId: MAESTROS[0].id, fecha: "", start: 14, durHours: 2, tipo: "sesion", abono: false, estilo: "" });
+  const [artistas, setArtistas] = useState<{ id: string; nombre: string; color: string }[]>([]);
+
+  // Tatuadores REALES (los mismos del Sitio; colores asignados por orden)
+  useEffect(() => {
+    fetch("/api/content")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        const lista = ((c?.tatuadores || []) as { id: string; nombre: string; activo?: boolean }[])
+          .filter((t) => t.activo !== false)
+          .map((t, i) => ({ id: t.id, nombre: t.nombre, color: PALETA[i % PALETA.length] }));
+        if (lista.length) {
+          setArtistas(lista);
+          setForm((f) => ({ ...f, maestroId: lista[0].id }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const lista = artistas.length ? artistas : MAESTROS.map((m) => ({ id: m.id, nombre: m.name, color: m.color }));
+  const artistaDe = (id: string) => lista.find((a) => a.id === id) ?? { id, nombre: id, color: "#C5A059" };
 
   const monday = mondayOf();
   const dayDate = (i: number) => {
@@ -80,13 +104,13 @@ export default function Agenda() {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             summary: "LAST RULES · " + form.coleccionista + (form.pieza ? " — " + form.pieza : ""),
-            description: (form.tipo === "asesoria" ? "Asesoría" : "Sesión") + " · " + (MAESTROS.find((m) => m.id === form.maestroId)?.name || ""),
+            description: [form.tipo === "asesoria" ? "Asesoría" : "Sesión", form.estilo, artistaDe(form.maestroId).nombre].filter(Boolean).join(" · "),
             start: { dateTime: ini.toISOString() }, end: { dateTime: fin.toISOString() },
           }),
         }).then(() => loadEvents()).catch(() => {});
       }
       setShowNew(false);
-      setForm({ coleccionista: "", pieza: "", maestroId: MAESTROS[0].id, fecha: "", start: 14, durHours: 2, tipo: "sesion", abono: false });
+      setForm({ coleccionista: "", pieza: "", maestroId: lista[0]?.id || MAESTROS[0].id, fecha: "", start: 14, durHours: 2, tipo: "sesion", abono: false, estilo: "" });
     } finally { setBusy(false); }
   }
 
@@ -175,7 +199,12 @@ export default function Agenda() {
                 className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none focus:border-gold/50" />
               <select value={form.maestroId} onChange={(e) => setForm({ ...form, maestroId: e.target.value })}
                 className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none">
-                {MAESTROS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {lista.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+              </select>
+              <select value={form.estilo} onChange={(e) => setForm({ ...form, estilo: e.target.value })}
+                className="w-full rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none">
+                <option value="">Estilo / tipo de tatuaje…</option>
+                {ESTILOS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <div className="flex gap-2">
                 <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })}
@@ -277,7 +306,7 @@ export default function Agenda() {
 
       {/* Filtro de tatuadores */}
       <div className="mb-3 flex flex-wrap gap-2">
-        {MAESTROS.map((m) => (
+        {lista.map((m) => (
           <button
             key={m.id}
             onClick={() => toggle(m.id)}
@@ -287,8 +316,7 @@ export default function Agenda() {
             style={{ borderColor: m.color + "66", color: m.color }}
           >
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: m.color }} />
-            {m.name}
-            <span className="text-bone-dim">· {m.styles[0]}</span>
+            {m.nombre}
           </button>
         ))}
         {gStatus?.connected && (
@@ -325,7 +353,7 @@ export default function Agenda() {
             let day = -1;
             for (let i = 0; i < 7; i++) { const dd = new Date(monday); dd.setDate(dd.getDate() + i); if (isoDe(dd) === c.fecha) { day = i; break; } }
             if (day < 0 || c.start < HOURS[0] || c.start > HOURS[HOURS.length - 1]) return null;
-            const m = MAESTROS.find((x) => x.id === c.maestroId) ?? MAESTROS[0];
+            const m = artistaDe(c.maestroId);
             if (hidden.has(m.id)) return null;
             const row = c.start - HOURS[0] + 2;
             return (
@@ -343,9 +371,9 @@ export default function Agenda() {
                     <span className="text-[9px]" style={{ color: c.abono ? "#3FB37F" : "#D8A24A" }}>{c.abono ? "abono ✓" : "abono pend."}</span>
                   )}
                 </div>
-                <div className="truncate" style={{ color: m.color }}>{c.pieza}</div>
+                <div className="truncate" style={{ color: m.color }}>{[c.estilo, c.pieza].filter(Boolean).join(" · ")}</div>
                 <div className="flex items-center gap-1 text-[9px] text-bone-dim">
-                  <Clock size={9} /> {c.start}:00–{c.start + c.durHours}:00 · {m.name}
+                  <Clock size={9} /> {c.start}:00–{c.start + c.durHours}:00 · {m.nombre}
                 </div>
               </div>
             );

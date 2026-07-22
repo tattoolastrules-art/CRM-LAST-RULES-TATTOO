@@ -12,6 +12,7 @@ export interface Cita {
   durHours: number;
   tipo: "sesion" | "asesoria";
   abono: boolean;
+  estilo: string; // tipo de tatuaje (realismo, fine line, blackwork...)
 }
 
 export async function getCitas(): Promise<Cita[]> {
@@ -31,6 +32,7 @@ export async function upsertCita(item: Partial<Cita>): Promise<Cita[]> {
     durHours: Math.max(1, Math.min(10, Number(item.durHours) || 1)),
     tipo: item.tipo === "asesoria" ? "asesoria" : "sesion",
     abono: !!item.abono,
+    estilo: String(item.estilo || "").slice(0, 40),
   };
   const i = citas.findIndex((c) => c.id === id);
   if (i >= 0) citas[i] = clean;

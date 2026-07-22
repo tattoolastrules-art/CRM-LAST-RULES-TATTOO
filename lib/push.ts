@@ -10,7 +10,7 @@ export function pushConfigured(): boolean {
 
 function setup() {
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:prodyg.studios@gmail.com",
+    process.env.VAPID_SUBJECT || "mailto:tattoolastrules@gmail.com",
     process.env.VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!,
   );
