@@ -7,10 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Power, Check } from "lucide-react";
 import { Logo } from "./Logo";
 
-// Hoja de ginkgo (abanico con muesca y tallo) para la lluvia dorada
-const GINKGO_PATH =
-  "M50 100 C49 78 47 68 42 60 C18 54 6 34 10 14 C24 28 36 34 47 36 L44 12 L50 22 L56 12 L53 36 C64 34 76 28 90 14 C94 34 82 54 58 60 C53 68 51 78 50 100 Z";
-
 const PASOS = [
   "Sistema de mensajes: activo",
   "Ana, asesora comercial: en línea",
@@ -98,65 +94,62 @@ export default function BootSequence({ userName, onDone }: { userName: string; o
       {/* lluvia de hojas de ginkgo */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-1000" style={{ opacity: fase === "off" ? 0.45 : 1 }}>
         {hojas.map((h, i) => (
-          <svg
+          <img
             key={i}
-            viewBox="0 0 100 110"
+            src="/logo.svg"
+            alt=""
             className="absolute top-0"
             style={{
               left: h.left + "%",
               width: h.size,
               opacity: h.op,
-              color: i % 4 === 0 ? "#D8BE86" : "#C5A059",
               animation: `leafFall ${h.dur}s linear ${h.delay}s infinite`,
-              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
+              filter: `brightness(${i % 4 === 0 ? 1.3 : 1}) drop-shadow(0 2px 4px rgba(0,0,0,0.4))`,
             }}
-          >
-            <path fill="currentColor" d={GINKGO_PATH} />
-          </svg>
+          />
         ))}
       </div>
-
-      {/* circuito dorado que se enciende alrededor del logo */}
-      {fase !== "off" && (
-        <svg viewBox="0 0 400 400" className="pointer-events-none absolute h-[440px] w-[440px] max-w-[95vw]" style={{ filter: "drop-shadow(0 0 6px rgba(197,160,89,0.55))" }}>
-          <g stroke="#C5A059" strokeWidth="1.4" fill="none">
-            {Array.from({ length: 8 }, (_, i) => (
-              <g key={i} transform={`rotate(${i * 45} 200 200)`}>
-                <path className="circuit-line" d="M200 152 L200 112 L226 86 L226 54" style={{ animationDelay: i * 0.12 + "s" }} />
-                <circle className="circuit-dot" cx="226" cy="54" r="3.5" fill="#C5A059" stroke="none" style={{ animationDelay: 1.4 + i * 0.12 + "s" }} />
-                <circle className="circuit-dot" cx="200" cy="112" r="2" fill="#D8BE86" stroke="none" style={{ animationDelay: 1.1 + i * 0.12 + "s" }} />
-              </g>
-            ))}
-            <circle className="circuit-line" cx="200" cy="200" r="62" style={{ animationDelay: "0.3s", strokeDasharray: 390, strokeDashoffset: 390 }} />
-          </g>
-        </svg>
-      )}
 
       {/* destello final */}
       {fase === "final" && <div className="boot-flash pointer-events-none absolute h-[500px] w-[500px] rounded-full" />}
 
-      <div className={`relative transition-all duration-700 ${fase === "off" ? "scale-100" : "scale-90"}`}>
+      <div className={`relative z-10 transition-all duration-700 ${fase === "off" ? "scale-100" : "scale-90"}`}>
+        {/* circuito dorado anclado alrededor del logo (no invade el texto) */}
+        {fase !== "off" && (
+          <svg viewBox="0 0 400 400" className="pointer-events-none absolute left-1/2 top-1/2 h-[270px] w-[270px] -translate-x-1/2 -translate-y-1/2" style={{ filter: "drop-shadow(0 0 6px rgba(197,160,89,0.55))" }}>
+            <g stroke="#C5A059" strokeWidth="1.6" fill="none">
+              {Array.from({ length: 8 }, (_, i) => (
+                <g key={i} transform={`rotate(${i * 45} 200 200)`}>
+                  <path className="circuit-line" d="M200 152 L200 112 L226 86 L226 54" style={{ animationDelay: i * 0.12 + "s" }} />
+                  <circle className="circuit-dot" cx="226" cy="54" r="3.5" fill="#C5A059" stroke="none" style={{ animationDelay: 1.4 + i * 0.12 + "s" }} />
+                  <circle className="circuit-dot" cx="200" cy="112" r="2" fill="#D8BE86" stroke="none" style={{ animationDelay: 1.1 + i * 0.12 + "s" }} />
+                </g>
+              ))}
+              <circle className="circuit-line" cx="200" cy="200" r="62" style={{ animationDelay: "0.3s", strokeDasharray: 390, strokeDashoffset: 390 }} />
+            </g>
+          </svg>
+        )}
         <Logo size={fase === "off" ? 90 : 64} />
       </div>
 
       {fase === "off" && (
         <>
-          <div className="mt-6 text-center font-display text-xl tracking-[0.3em] text-bone">LAST RULES OS</div>
-          <div className="mt-1 text-[11px] tracking-widest text-bone-dim">EL TEMPLO DE LA PIEL</div>
+          <div className="relative z-10 mt-6 text-center font-display text-xl tracking-[0.3em] text-bone">LAST RULES OS</div>
+          <div className="relative z-10 mt-1 text-[11px] tracking-widest text-bone-dim">EL TEMPLO DE LA PIEL</div>
           <button
             onClick={encender}
-            className="group mt-12 flex h-28 w-28 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10 text-gold shadow-[0_0_60px_-10px_rgba(197,160,89,0.5)] transition hover:scale-105 hover:bg-gold/20 hover:shadow-[0_0_90px_-10px_rgba(197,160,89,0.8)]"
+            className="group relative z-10 mt-12 flex h-28 w-28 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10 text-gold shadow-[0_0_60px_-10px_rgba(197,160,89,0.5)] transition hover:scale-105 hover:bg-gold/20 hover:shadow-[0_0_90px_-10px_rgba(197,160,89,0.8)]"
             aria-label="Encender sistema"
           >
             <Power size={44} className="transition group-hover:scale-110" />
           </button>
-          <div className="mt-5 animate-pulse text-[11px] uppercase tracking-[0.25em] text-gold-soft">Encender sistema</div>
-          <button onClick={onDone} className="mt-8 text-[10px] text-bone-dim/50 underline-offset-2 hover:underline">omitir</button>
+          <div className="relative z-10 mt-5 animate-pulse text-[11px] uppercase tracking-[0.25em] text-gold-soft">Encender sistema</div>
+          <button onClick={onDone} className="relative z-10 mt-8 text-[10px] text-bone-dim/50 underline-offset-2 hover:underline">omitir</button>
         </>
       )}
 
       {fase !== "off" && (
-        <div className="mt-8 w-full max-w-sm">
+        <div className="relative z-10 mt-8 w-full max-w-sm rounded-2xl border border-gold/10 bg-navy/75 p-5 backdrop-blur-md">
           {PASOS.map((p, i) => (
             <div
               key={i}
