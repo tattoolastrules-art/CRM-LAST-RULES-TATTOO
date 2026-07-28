@@ -38,19 +38,24 @@ export default function CrmDashboard() {
   const [webLeads, setWebLeads] = useState<Row[]>([]);
 
   useEffect(() => {
+    const ORIGEN_CH: Record<string, Row["channel"]> = { whatsapp: "whatsapp", instagram: "instagram", page: "facebook", facebook: "facebook" };
+    const HUE: Record<string, number> = { whatsapp: 145, instagram: 330, facebook: 215, web: 175 };
     fetch("/api/lead")
       .then((r) => (r.ok ? r.json() : { leads: [] }))
       .then((d) => {
-        const mapped: Row[] = (d.leads || []).map((l: Record<string, string>) => ({
-          id: "web-" + l.id,
-          contact: { name: l.nombre || "(sin nombre)", city: "", avatarHue: 175 },
-          channel: "web" as const,
-          idea: [l.servicio, l.idea].filter(Boolean).join(" · ") || l.presupuesto || "—",
-          stage: ESTADO_STAGE[l.estado] || "nuevo",
-          lastAt: l.fecha,
-          unread: l.estado === "nuevo",
-          isWeb: true,
-        }));
+        const mapped: Row[] = (d.leads || []).map((l: Record<string, string>) => {
+          const channel: Row["channel"] = ORIGEN_CH[l.origen] || "web";
+          return {
+            id: "web-" + l.id,
+            contact: { name: l.nombre || "(sin nombre)", city: "", avatarHue: HUE[channel] },
+            channel,
+            idea: [l.servicio, l.idea].filter(Boolean).join(" · ") || l.presupuesto || "—",
+            stage: ESTADO_STAGE[l.estado] || "nuevo",
+            lastAt: l.fecha,
+            unread: l.estado === "nuevo",
+            isWeb: channel === "web",
+          };
+        });
         setWebLeads(mapped);
       })
       .catch(() => {});
@@ -58,16 +63,17 @@ export default function CrmDashboard() {
 
   const leads: Row[] = webLeads;
 
+  const soloWeb = webLeads.filter((l) => l.isWeb);
   const count = (s: Stage) => leads.filter((l) => l.stage === s).length;
   const enCierre = leads.filter((l) => ["agendando", "abono", "cerrado", "asesoria"].includes(l.stage)).length;
   const cerrados = leads.filter((l) => l.stage === "cerrado").length;
-  const nuevasWeb = webLeads.filter((l) => l.unread).length;
+  const nuevasWeb = soloWeb.filter((l) => l.unread).length;
   const maxFunnel = Math.max(1, ...FUNNEL.map(count));
 
   const DAYS = 10;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const perDay = Array.from({ length: DAYS }, (_, i) => { const d = new Date(today); d.setDate(d.getDate() - (DAYS - 1 - i)); return { d, n: 0 }; });
-  webLeads.forEach((l) => { const ld = new Date(l.lastAt); ld.setHours(0, 0, 0, 0); const idx = perDay.findIndex((x) => +x.d === +ld); if (idx >= 0) perDay[idx].n++; });
+  soloWeb.forEach((l) => { const ld = new Date(l.lastAt); ld.setHours(0, 0, 0, 0); const idx = perDay.findIndex((x) => +x.d === +ld); if (idx >= 0) perDay[idx].n++; });
   const maxDay = Math.max(1, ...perDay.map((x) => x.n));
 
   const rows = leads
@@ -85,7 +91,7 @@ export default function CrmDashboard() {
       {/* KPIs */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Leads totales" value={leads.length} Icon={Users} />
-        <Kpi label="Reservas web" value={webLeads.length} Icon={Inbox} accent="#37C7C0" sub={nuevasWeb ? nuevasWeb + " nuevas" : undefined} />
+        <Kpi label="Reservas web" value={soloWeb.length} Icon={Inbox} accent="#37C7C0" sub={nuevasWeb ? nuevasWeb + " nuevas" : undefined} />
         <Kpi label="En cierre" value={enCierre} Icon={Flame} gold />
         <Kpi label="Cerrados" value={cerrados} Icon={Trophy} />
         <Kpi label="Tasa de cierre" value={`${leads.length ? Math.round((cerrados / leads.length) * 100) : 0}%`} Icon={Percent} />

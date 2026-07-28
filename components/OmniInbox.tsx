@@ -326,7 +326,7 @@ export default function OmniInbox() {
               return (
                 <button
                   key={t.id}
-                  onClick={() => { setChFilter(t.id); setShowComments(false); }}
+                  onClick={() => { setChFilter(t.id); setShowComments(false); setMobileChat(false); }}
                   className={`rounded-full px-2.5 py-1 text-[11px] transition ${
                     active
                       ? "bg-[#00a884] text-[#0b141a]"
@@ -341,7 +341,7 @@ export default function OmniInbox() {
               const pend = comments.filter((c) => !c.replied && !c.hidden).length;
               return (
                 <button
-                  onClick={() => setShowComments((v) => !v)}
+                  onClick={() => { const next = !showComments; setShowComments(next); setMobileChat(next); }}
                   className={`rounded-full px-2.5 py-1 text-[11px] transition ${
                     showComments
                       ? "bg-gold text-navy"
@@ -355,68 +355,7 @@ export default function OmniInbox() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {showComments ? (
-            <div className="space-y-2 p-2">
-              <p className="px-1 text-[11px] leading-relaxed text-[#8696a0]">
-                Comentarios de Instagram y Facebook. Con NOVA encendida, <b>Ana responde sola en público</b> y si el
-                comentario muestra interés (precio, cita, info…) <b>le envía DM automático</b> 💬. Aquí también puedes
-                responder tú, dar <b>like</b> (solo Facebook) y <b>ocultar</b> los que no aporten.
-              </p>
-              {comments.length === 0 && (
-                <div className="px-1 py-6 text-center text-xs text-[#8696a0]">
-                  Aún no hay comentarios. Cuando comenten una publicación aparecerán aquí con su notificación 🖤
-                </div>
-              )}
-              {comments.map((c) => (
-                <div key={c.id} className={`rounded-xl bg-[#202c33] p-2.5 ${c.hidden ? "opacity-50" : ""}`}>
-                  <div className="mb-1 flex items-center gap-1.5 text-[11px]" style={{ color: CHANNEL_COLOR[c.platform] }}>
-                    {chIcon(c.platform, 11)}
-                    <span className="font-medium text-[#e9edef]">{c.from || "(sin nombre)"}</span>
-                    <span className="ml-auto text-[#8696a0]">{timeOf(c.at)}</span>
-                  </div>
-                  <div className="text-sm text-[#e9edef]">{c.text}</div>
-                  <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8696a0]">
-                    {c.liked && <span className="text-[#1877f2]">👍 con like</span>}
-                    {c.dmSent && <span className="text-[#00a884]">💬 DM enviado</span>}
-                    {c.hidden && <span>🙈 oculto</span>}
-                  </div>
-                  {c.replied ? (
-                    <div className="mt-1.5 rounded-lg border-l-2 border-[#00a884] bg-[#0b141a] px-2 py-1.5 text-xs text-[#8696a0]">
-                      <span className="text-[#00a884]">Respondido:</span> {c.replied.text}
-                    </div>
-                  ) : (
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                      <input
-                        value={replyDrafts[c.id] || ""}
-                        onChange={(e) => setReplyDrafts((p) => ({ ...p, [c.id]: e.target.value }))}
-                        placeholder="Responder en público…"
-                        className="min-w-0 flex-1 rounded-lg bg-[#2a3942] px-2 py-1.5 text-xs text-[#e9edef] outline-none placeholder:text-[#8696a0]"
-                      />
-                      <button
-                        onClick={() => commentAction(c.id, "reply", { text: (replyDrafts[c.id] || "").trim() })}
-                        disabled={!(replyDrafts[c.id] || "").trim() || !!cBusy}
-                        title="Responder"
-                        className="rounded-lg bg-[#00a884] p-1.5 text-[#0b141a] disabled:opacity-40"
-                      >
-                        <Send size={13} />
-                      </button>
-                    </div>
-                  )}
-                  <div className="mt-1.5 flex gap-2">
-                    {c.platform === "facebook" && !c.liked && (
-                      <button onClick={() => commentAction(c.id, "like")} disabled={!!cBusy} className="rounded bg-[#111b21] px-2 py-0.5 text-[10px] text-[#8696a0] hover:text-[#e9edef]">
-                        👍 Me gusta
-                      </button>
-                    )}
-                    <button onClick={() => commentAction(c.id, "hide", { hide: !c.hidden })} disabled={!!cBusy} className="rounded bg-[#111b21] px-2 py-0.5 text-[10px] text-[#8696a0] hover:text-[#e9edef]">
-                      {c.hidden ? "Mostrar" : "🙈 Ocultar"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-          list.map((c) => {
+          {list.map((c) => {
             const last = c.messages[c.messages.length - 1];
             const active = c.id === selectedId;
             return (
@@ -465,8 +404,7 @@ export default function OmniInbox() {
                 </div>
               </button>
             );
-          })
-          )}
+          })}
         </div>
       </div>
 
@@ -479,7 +417,81 @@ export default function OmniInbox() {
           backgroundSize: "22px 22px",
         }}
       >
-        {!selected ? (
+        {showComments ? (
+          <>
+            <div className="flex items-center gap-3 bg-[#202c33] px-4 py-3">
+              <button onClick={() => { setShowComments(false); setMobileChat(false); }} className="-ml-1 text-[#8696a0] hover:text-[#e9edef] sm:hidden" aria-label="Volver">
+                <ArrowLeft size={20} />
+              </button>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[#e9edef]">Comentarios · Instagram y Facebook</div>
+                <div className="text-[11px] text-[#8696a0]">
+                  Con NOVA encendida, Ana responde sola en público y envía DM automático 💬 si el comentario muestra
+                  interés. El like solo existe en Facebook y &ldquo;Ocultar&rdquo; lo esconde para todos menos para el autor.
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="mx-auto w-full max-w-2xl space-y-3">
+                {comments.length === 0 && (
+                  <div className="py-12 text-center text-sm text-[#8696a0]">
+                    Aún no hay comentarios. Cuando comenten una publicación aparecerán aquí con su notificación 🖤
+                  </div>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} className={`rounded-xl bg-[#202c33] p-3.5 ${c.hidden ? "opacity-60" : ""}`}>
+                    <div className="mb-1.5 flex items-center gap-2 text-xs" style={{ color: CHANNEL_COLOR[c.platform] }}>
+                      {chIcon(c.platform, 13)}
+                      <span className="text-[13px] font-medium text-[#e9edef]">{c.from || "(sin nombre)"}</span>
+                      <span className="text-[#8696a0]">{CHANNEL_LABELS[c.platform]}</span>
+                      <span className="ml-auto text-[11px] text-[#8696a0]">{timeOf(c.at)}</span>
+                    </div>
+                    <div className="text-[15px] leading-snug text-[#e9edef]">{c.text}</div>
+                    <div className="mt-1.5 flex items-center gap-3 text-[11px] text-[#8696a0]">
+                      {c.liked && <span className="text-[#1877f2]">👍 con like</span>}
+                      {c.dmSent && <span className="text-[#00a884]">💬 DM enviado</span>}
+                      {c.hidden && <span>🙈 oculto para el público</span>}
+                    </div>
+                    {c.replied ? (
+                      <div className="mt-2 rounded-lg border-l-2 border-[#00a884] bg-[#0b141a] px-3 py-2 text-[13px] text-[#8696a0]">
+                        <span className="text-[#00a884]">Respondido en público:</span> {c.replied.text}
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          value={replyDrafts[c.id] || ""}
+                          onChange={(e) => setReplyDrafts((p) => ({ ...p, [c.id]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === "Enter") commentAction(c.id, "reply", { text: (replyDrafts[c.id] || "").trim() }); }}
+                          placeholder={c.hidden ? "Para responder primero dale Mostrar…" : "Responder en público…"}
+                          disabled={c.hidden}
+                          className="min-w-0 flex-1 rounded-lg bg-[#2a3942] px-3 py-2 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0] disabled:opacity-50"
+                        />
+                        <button
+                          onClick={() => commentAction(c.id, "reply", { text: (replyDrafts[c.id] || "").trim() })}
+                          disabled={!(replyDrafts[c.id] || "").trim() || !!cBusy || c.hidden}
+                          title="Responder en público"
+                          className="rounded-lg bg-[#00a884] p-2 text-[#0b141a] disabled:opacity-40"
+                        >
+                          <Send size={15} />
+                        </button>
+                      </div>
+                    )}
+                    <div className="mt-2 flex gap-2">
+                      {c.platform === "facebook" && !c.liked && (
+                        <button onClick={() => commentAction(c.id, "like")} disabled={!!cBusy} className="rounded-lg bg-[#111b21] px-2.5 py-1 text-[11px] text-[#8696a0] transition hover:text-[#e9edef]">
+                          👍 Me gusta
+                        </button>
+                      )}
+                      <button onClick={() => commentAction(c.id, "hide", { hide: !c.hidden })} disabled={!!cBusy} className="rounded-lg bg-[#111b21] px-2.5 py-1 text-[11px] text-[#8696a0] transition hover:text-[#e9edef]">
+                        {c.hidden ? "Mostrar" : "🙈 Ocultar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : !selected ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
             <span className="text-3xl">🖤</span>
             <span className="text-sm text-[#8696a0]">Aún no hay conversaciones.</span>
