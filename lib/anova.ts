@@ -49,6 +49,13 @@ const TYPE_REPLIES: Record<string, string[]> = {
   image: [
     "¡La vi! Buena referencia 🖤 Cuéntame: ¿en qué zona del cuerpo la imaginas y de qué tamaño aprox?",
   ],
+  share: [
+    "¡Vi lo que me compartiste! 🖤 ¿Esa es la idea que tienes para tu tatuaje?",
+    "Buena referencia la que mandaste 🤍 Cuéntame, ¿en qué zona del cuerpo la imaginas?",
+  ],
+  story_mention: [
+    "¡Gracias por compartirlo en tu historia! 🖤 Nos alegra un montón. ¿Cómo va todo con tu tatuaje?",
+  ],
 };
 
 export function typeReply(type: string): string | null {

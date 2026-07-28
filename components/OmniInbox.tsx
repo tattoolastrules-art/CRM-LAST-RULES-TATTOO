@@ -70,6 +70,18 @@ function timeOf(iso: string) {
   return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Comentario de IG/FB registrado por el webhook (bandeja Comentarios)
+interface CommentRow {
+  id: string;
+  platform: "instagram" | "facebook";
+  from: string;
+  text: string;
+  at: string;
+  replied?: { text: string; at: string };
+  liked?: boolean;
+  hidden?: boolean;
+}
+
 // Ventana de 24h: cuánto queda para poder responder libre (desde el último mensaje del cliente)
 function ventanaDe(c?: Item): { abierta: boolean; horas: number } | null {
   if (!c?.real) return null;
@@ -93,6 +105,10 @@ export default function OmniInbox() {
   const [tplOpen, setTplOpen] = useState(false);
   const [tplKind, setTplKind] = useState<"lr_seguimiento" | "lr_confirmacion_cita">("lr_seguimiento");
   const [tplText, setTplText] = useState("¿Cómo vas con tu tatuaje? ¿Todo bien con la cicatrización?");
+  const [comments, setComments] = useState<CommentRow[]>([]);
+  const [showComments, setShowComments] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [cBusy, setCBusy] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -105,6 +121,12 @@ export default function OmniInbox() {
         if (!r.ok) return;
         const d = await r.json();
         if (on) setReal(mapReal(d.convos || []));
+      } catch {}
+      try {
+        const r = await fetch("/api/comments");
+        if (!r.ok) return;
+        const d = await r.json();
+        if (on) setComments(d.comments || []);
       } catch {}
     }
     loadReal();
@@ -171,6 +193,26 @@ export default function OmniInbox() {
       ),
     );
     setDraft("");
+  }
+
+  function commentAction(id: string, action: "reply" | "like" | "hide", extra?: { text?: string; hide?: boolean }) {
+    if (cBusy) return;
+    setCBusy(id + action);
+    fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, id, ...extra }),
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) alert(d.error || "No se pudo");
+        else {
+          if (d.comments) setComments(d.comments);
+          if (action === "reply") setReplyDrafts((p) => ({ ...p, [id]: "" }));
+        }
+      })
+      .catch(() => alert("Error de conexión"))
+      .finally(() => setCBusy(""));
   }
 
   function sendTemplate() {
@@ -273,17 +315,17 @@ export default function OmniInbox() {
               className="w-full bg-transparent text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
             />
           </div>
-          <div className="mt-2 flex gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {TABS.map((t) => {
               const n =
                 t.id === "all"
                   ? all.length
                   : all.filter((c) => c.channel === t.id).length;
-              const active = chFilter === t.id;
+              const active = !showComments && chFilter === t.id;
               return (
                 <button
                   key={t.id}
-                  onClick={() => setChFilter(t.id)}
+                  onClick={() => { setChFilter(t.id); setShowComments(false); }}
                   className={`rounded-full px-2.5 py-1 text-[11px] transition ${
                     active
                       ? "bg-[#00a884] text-[#0b141a]"
@@ -294,10 +336,85 @@ export default function OmniInbox() {
                 </button>
               );
             })}
+            {(() => {
+              const pend = comments.filter((c) => !c.replied && !c.hidden).length;
+              return (
+                <button
+                  onClick={() => setShowComments((v) => !v)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] transition ${
+                    showComments
+                      ? "bg-gold text-navy"
+                      : "bg-[#111b21] text-[#8696a0] hover:text-[#e9edef]"
+                  }`}
+                >
+                  Comentarios {pend > 0 && <span className={showComments ? "opacity-70" : "text-gold"}>{pend}</span>}
+                </button>
+              );
+            })()}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {list.map((c) => {
+          {showComments ? (
+            <div className="space-y-2 p-2">
+              <p className="px-1 text-[11px] leading-relaxed text-[#8696a0]">
+                Comentarios en las publicaciones de Instagram y Facebook. Puedes <b>responder</b> (queda público
+                debajo del comentario), dar <b>like</b> (solo Facebook — Instagram no lo permite desde fuera de su
+                app) y <b>ocultar</b> los que no aporten.
+              </p>
+              {comments.length === 0 && (
+                <div className="px-1 py-6 text-center text-xs text-[#8696a0]">
+                  Aún no hay comentarios. Cuando comenten una publicación aparecerán aquí con su notificación 🖤
+                </div>
+              )}
+              {comments.map((c) => (
+                <div key={c.id} className={`rounded-xl bg-[#202c33] p-2.5 ${c.hidden ? "opacity-50" : ""}`}>
+                  <div className="mb-1 flex items-center gap-1.5 text-[11px]" style={{ color: CHANNEL_COLOR[c.platform] }}>
+                    {chIcon(c.platform, 11)}
+                    <span className="font-medium text-[#e9edef]">{c.from || "(sin nombre)"}</span>
+                    <span className="ml-auto text-[#8696a0]">{timeOf(c.at)}</span>
+                  </div>
+                  <div className="text-sm text-[#e9edef]">{c.text}</div>
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8696a0]">
+                    {c.liked && <span className="text-[#1877f2]">👍 con like</span>}
+                    {c.hidden && <span>🙈 oculto</span>}
+                  </div>
+                  {c.replied ? (
+                    <div className="mt-1.5 rounded-lg border-l-2 border-[#00a884] bg-[#0b141a] px-2 py-1.5 text-xs text-[#8696a0]">
+                      <span className="text-[#00a884]">Respondido:</span> {c.replied.text}
+                    </div>
+                  ) : (
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <input
+                        value={replyDrafts[c.id] || ""}
+                        onChange={(e) => setReplyDrafts((p) => ({ ...p, [c.id]: e.target.value }))}
+                        placeholder="Responder en público…"
+                        className="min-w-0 flex-1 rounded-lg bg-[#2a3942] px-2 py-1.5 text-xs text-[#e9edef] outline-none placeholder:text-[#8696a0]"
+                      />
+                      <button
+                        onClick={() => commentAction(c.id, "reply", { text: (replyDrafts[c.id] || "").trim() })}
+                        disabled={!(replyDrafts[c.id] || "").trim() || !!cBusy}
+                        title="Responder"
+                        className="rounded-lg bg-[#00a884] p-1.5 text-[#0b141a] disabled:opacity-40"
+                      >
+                        <Send size={13} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-1.5 flex gap-2">
+                    {c.platform === "facebook" && !c.liked && (
+                      <button onClick={() => commentAction(c.id, "like")} disabled={!!cBusy} className="rounded bg-[#111b21] px-2 py-0.5 text-[10px] text-[#8696a0] hover:text-[#e9edef]">
+                        👍 Me gusta
+                      </button>
+                    )}
+                    <button onClick={() => commentAction(c.id, "hide", { hide: !c.hidden })} disabled={!!cBusy} className="rounded bg-[#111b21] px-2 py-0.5 text-[10px] text-[#8696a0] hover:text-[#e9edef]">
+                      {c.hidden ? "Mostrar" : "🙈 Ocultar"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+          list.map((c) => {
             const last = c.messages[c.messages.length - 1];
             const active = c.id === selectedId;
             return (
@@ -346,7 +463,8 @@ export default function OmniInbox() {
                 </div>
               </button>
             );
-          })}
+          })
+          )}
         </div>
       </div>
 
