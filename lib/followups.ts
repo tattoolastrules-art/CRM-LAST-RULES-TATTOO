@@ -3,7 +3,7 @@
 // los valores por defecto son los recomendados por el sistema.
 import { loadJSON, saveJSON } from "./store";
 import { getLeads, updateLead, type Lead } from "./leads";
-import { sendWhatsAppText, waConfigured } from "./whatsapp";
+import { sendWhatsAppText, sendWhatsAppTemplate, waConfigured } from "./whatsapp";
 import { addConvoMsg } from "./convos";
 
 export interface FollowStep { id: string; dias: number; msg: string }
@@ -57,13 +57,36 @@ function fill(msg: string, lead: Lead): string {
     .replaceAll("{fecha}", lead.fechaCita ? new Date(lead.fechaCita).toLocaleString("es-CO", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "");
 }
 
-async function enviar(lead: Lead, msg: string): Promise<boolean> {
+// El saludo ya viene en la plantilla: se quita del texto del paso para no saludar dos veces
+function sinSaludo(msg: string): string {
+  return msg
+    .replace(/^\s*¡?\s*hola\s*\{nombre\}\s*!?\s*/i, "")
+    .replace(/^\s*¡?\s*\{nombre\}\s*!?\s*/i, "")
+    .replace(/^\s*¡?\s*hola\s*!?\s*/i, "")
+    .trim();
+}
+
+function fechaCitaTexto(lead: Lead): string {
+  if (!lead.fechaCita) return "próximamente";
+  const d = new Date(lead.fechaCita);
+  const dia = d.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  const hora = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `el ${dia} a las ${hora}`;
+}
+
+// Envía por PLANTILLA (llega aunque la ventana de 24h esté cerrada); si la
+// plantilla aún no está aprobada, intenta texto libre (llega solo con ventana abierta).
+async function enviar(lead: Lead, template: string, params: string[], textoChat: string): Promise<boolean> {
   const digits = (lead.contacto || "").replace(/\D/g, "");
   if (digits.length < 8) return false;
   const to = digits.startsWith("57") ? digits : "57" + digits;
   try {
-    await sendWhatsAppText(to, msg);
-    await addConvoMsg(to, lead.nombre, "ana", msg);
+    try {
+      await sendWhatsAppTemplate(to, template, params);
+    } catch {
+      await sendWhatsAppText(to, textoChat);
+    }
+    await addConvoMsg(to, lead.nombre, "ana", textoChat);
     return true;
   } catch {
     return false;
@@ -82,11 +105,14 @@ export async function runFollowups(): Promise<{ confirmaciones: number; seguimie
   for (const lead of leads) {
     const seg: Record<string, string> = ((lead as unknown as { seguimientos?: Record<string, string> }).seguimientos) || {};
 
-    // 1) Confirmación de cita: entre 30h y 2h antes de la cita
+    // 1) Confirmación de cita: entre 30h y 2h antes de la cita (plantilla con botones)
     if (lead.estado === "agendado" && lead.fechaCita && !seg.confirm) {
       const diff = new Date(lead.fechaCita).getTime() - now;
       if (diff > 2 * 3600e3 && diff < 30 * 3600e3) {
-        if (await enviar(lead, fill(cfg.confirmMsg, lead))) {
+        const nombre = (lead.nombre || "").split(" ")[0] || "";
+        const fecha = fechaCitaTexto(lead);
+        const textoChat = `¡Hola ${nombre}! Te escribo de Last Rules Tattoo 🖤 Tienes tu cita ${fecha}. Llega con buena comida, bien hidratado(a) y ropa cómoda. ¿Nos confirmas que asistes?`;
+        if (await enviar(lead, "lr_confirmacion_cita", [nombre || "🖤", fecha], textoChat)) {
           seg.confirm = new Date().toISOString();
           await updateLead(lead.id, { seguimientos: seg } as Partial<Lead>);
           confirmaciones++;
@@ -101,7 +127,10 @@ export async function runFollowups(): Promise<{ confirmaciones: number; seguimie
       for (const step of cfg.steps) {
         // ventana de 2 días para no bombardear si el cron se salta un día
         if (dias >= step.dias && dias <= step.dias + 1 && !seg[step.id]) {
-          if (await enviar(lead, fill(step.msg, lead))) {
+          const nombre = (lead.nombre || "").split(" ")[0] || "";
+          const cuerpo = fill(sinSaludo(step.msg), lead);
+          const textoChat = `¡Hola ${nombre}! Te escribo de Last Rules Tattoo 🖤 ${cuerpo} Cualquier duda me escribes por aquí.`;
+          if (await enviar(lead, "lr_seguimiento", [nombre || "🖤", cuerpo], textoChat)) {
             seg[step.id] = new Date().toISOString();
             await updateLead(lead.id, { seguimientos: seg } as Partial<Lead>);
             seguimientos++;

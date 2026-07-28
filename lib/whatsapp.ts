@@ -59,6 +59,32 @@ export async function sendWhatsAppImage(to: string, mediaId: string, caption?: s
   return res.json();
 }
 
+// Envía una plantilla aprobada (permite escribir FUERA de la ventana de 24h).
+// Los parámetros no pueden llevar saltos de línea ni espacios repetidos.
+export async function sendWhatsAppTemplate(to: string, name: string, params: string[]) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_ID;
+  if (!token || !phoneId) throw new Error("Falta WHATSAPP_TOKEN / WHATSAPP_PHONE_ID");
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template: {
+        name,
+        language: { code: "es" },
+        components: [
+          { type: "body", parameters: params.map((t) => ({ type: "text", text: t.replace(/\s+/g, " ").trim().slice(0, 500) })) },
+        ],
+      },
+    }),
+  });
+  if (!res.ok) throw new Error("WhatsApp template " + res.status + ": " + (await res.text()));
+  return res.json();
+}
+
 export async function sendWhatsAppText(to: string, text: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
