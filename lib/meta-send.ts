@@ -20,7 +20,7 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
       message: { text: text.slice(0, 1000) },
     }),
   });
-  if (!r.ok) throw new Error("Meta send [tok " + token.slice(0, 10) + "…]: " + (await r.text()).slice(0, 300));
+  if (!r.ok) throw new Error("Meta send [tok …" + token.slice(-6) + "]: " + (await r.text()).slice(0, 300));
 }
 
 // Private Reply oficial de Meta: manda un DM al autor de un comentario
