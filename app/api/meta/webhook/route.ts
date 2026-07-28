@@ -8,7 +8,7 @@ import { addComment, patchComment } from "@/lib/comments";
 
 // Ids propios (página FB e IG del estudio): sus comentarios/respuestas no se registran (anti-bucle)
 const OWN_IDS = new Set(["797899886739979", "17841466188660965"]);
-import { getSettings } from "@/lib/settings";
+import { getSettings, saveSettings } from "@/lib/settings";
 import { addConvoMsg } from "@/lib/convos";
 import { pushAll } from "@/lib/push";
 import { notifyStudio } from "@/lib/notify";
@@ -36,6 +36,29 @@ const DM_COMENTARIO = [
   "¡Hola! Soy Ana, de Last Rules Tattoo 🖤 Vi tu comentario y te escribo de una. ¿Qué idea tienes? Así te cuento valores y disponibilidad.",
 ];
 const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+// ── Modo administrador por WhatsApp ──
+// El código activa el rol: ese número recibe los avisos del estudio y Ana lo
+// atiende SOLO con respuestas predefinidas (cero tokens) indicando rutas del panel.
+const ADMIN_CODE = "28072026";
+const ADMIN_ASK_RE = /(administrador|admin\b|activar.*notificaci|notificaci.*activar|notificaciones directas)/i;
+
+function adminRoute(t: string): string {
+  const BASE = "https://app.lastrulestattoo.com/os";
+  const r = (ruta: string, tip: string) => `🖤 Modo administrador\n${tip}\n👉 ${ruta}`;
+  const s = (t || "").toLowerCase();
+  if (/notificacion|aviso/.test(s)) return r(`${BASE} → Agenda → Seguimientos`, "Las notificaciones del estudio llegan al “Número de avisos” de esa pantalla (ya quedó este). El push por dispositivo se activa con el botón “Avisos” del menú del panel.");
+  if (/plantilla/.test(s)) return r(`${BASE} → Omnicanal → botón 📄 dentro del chat`, "Las plantillas reabren chats de WhatsApp cuando la ventana de 24h ya se cerró.");
+  if (/cita|agenda|calendario/.test(s)) return r(`${BASE} → Agenda`, "Citas de los tatuadores con “+ Nueva cita” (tatuador, estilo, fecha; se sincroniza con Google Calendar).");
+  if (/chat|mensaje|whatsapp|instagram|face|comentario|inbox/.test(s)) return r(`${BASE} → Omnicanal`, "Todos los chats (WhatsApp, Instagram, Messenger) y la pestaña Comentarios para responder, dar like u ocultar.");
+  if (/lead|reserva|cliente|crm|embudo/.test(s)) return r(`${BASE} → CRM y Reservas`, "Los clientes, las reservas de la web y el embudo con sus estados.");
+  if (/flujo/.test(s)) return r(`${BASE} → Flujos`, "Los mensajes automáticos de Ana: tocas un nodo verde y editas el texto directamente.");
+  if (/planner|marketing|campañ|publicacion|contenido/.test(s)) return r(`${BASE} → Planner`, "Tablero y calendario de marketing: creas campañas y las mueves por estado o por fecha.");
+  if (/web|sitio|pagina|foto|portafolio|noticia/.test(s)) return r(`${BASE} → Sitio`, "La página pública: tatuadores, portafolio y noticias. “Publicar al sitio” sube los cambios a la web.");
+  if (/seguimiento|encuesta|confirmaci/.test(s)) return r(`${BASE} → Agenda → Seguimientos`, "Confirmación de citas y controles post-tatuaje (los días y textos son editables) + encuesta con reseña de Google.");
+  if (/usuario|clave|contraseñ/.test(s)) return r(`${BASE} → Usuarios`, "Crear usuarios del equipo y asignar claves y roles.");
+  return `🖤 Modo administrador — te guío directo, sin gastar IA.\nDime una palabra clave y te paso la ruta exacta: citas · chats · comentarios · reservas · flujos · planner · sitio · plantillas · notificaciones · seguimientos · usuarios.\n👉 Panel: ${BASE}`;
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -251,6 +274,35 @@ export async function POST(req: Request) {
     const lead = extractLead(object, entry);
     if (lead) {
       if (lead.origen === "whatsapp") {
+        // ── Modo administrador (código 280… → rutas del panel, cero tokens) ──
+        const from = String(lead.contacto);
+        const waTexto = String(lead.texto ?? "").trim();
+        const cfg0 = await getSettings();
+        const responderAdmin = async (msg: string) => {
+          await addConvoMsg(from, String(lead.nombre || ""), "coleccionista", String(lead.idea || ""));
+          try {
+            if (waConfigured()) {
+              await sendWhatsAppText(from, msg);
+              await addConvoMsg(from, "", "ana", msg);
+            }
+          } catch { /* sin ventana o sin config: no rompemos la recepción */ }
+        };
+        if (waTexto === ADMIN_CODE) {
+          await saveSettings({ notifyPhone: from, adminPhones: [...new Set([...cfg0.adminPhones, from])] });
+          await responderAdmin(
+            "✅ Código correcto. Este número quedó como ADMINISTRADOR del sistema:\n• Aquí llegarán los avisos del estudio (reservas web, citas, posibles abonos, chats por vencerse).\n• Escríbeme una palabra (citas, chats, sitio…) y te paso la ruta exacta del panel.\n\n👉 Panel: https://app.lastrulestattoo.com/os",
+          );
+          return new Response("EVENT_RECEIVED", { status: 200 });
+        }
+        if (cfg0.adminPhones.includes(from)) {
+          await responderAdmin(adminRoute(waTexto));
+          return new Response("EVENT_RECEIVED", { status: 200 });
+        }
+        if (ADMIN_ASK_RE.test(waTexto)) {
+          await responderAdmin("¡Hola! Claro 🖤 Por seguridad, envíame el código de administrador (solo el número) y activo todo con este WhatsApp.");
+          return new Response("EVENT_RECEIVED", { status: 200 });
+        }
+
         await upsertLeadByContact(lead);
 
         // Si mandó imagen: se descarga UNA vez (para verla en el chat y para la visión de Ana)
@@ -331,6 +383,15 @@ export async function POST(req: Request) {
         const plataforma = lead.origen === "instagram" ? "instagram" as const : "facebook" as const;
         const commentId = String(lead.commentId || "c" + Date.now());
         const texto = String(lead.idea || "");
+        // Tarjeta única por cliente: el comentario se une al MISMO lead que sus DMs
+        // (Meta usa el mismo id de usuario en comentarios y mensajes del canal)
+        if (lead.contacto) {
+          await upsertLeadByContact({
+            nombre: lead.nombre, contacto: lead.contacto,
+            servicio: "Comentario " + (plataforma === "instagram" ? "Instagram" : "Facebook"),
+            idea: texto, origen: lead.origen,
+          }).catch(() => {});
+        }
         const esNuevo = await addComment({
           id: commentId,
           platform: plataforma,
