@@ -5,6 +5,12 @@ import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
 import { fbConfigured, sendMetaDM, fetchMetaName, fetchUrlBase64, replyComment, sendPrivateReply } from "@/lib/meta-send";
 import { addComment, patchComment } from "@/lib/comments";
+import { saveJSON } from "@/lib/store";
+
+// Última falla del auto-respondedor (para diagnóstico: clave debug_last en Neon)
+function logFail(donde: string, e: unknown) {
+  saveJSON("debug_last", { at: new Date().toISOString(), donde, err: String((e as Error)?.message || e).slice(0, 400) }).catch(() => {});
+}
 
 // Ids propios (página FB e IG del estudio): sus comentarios/respuestas no se registran (anti-bucle)
 const OWN_IDS = new Set(["797899886739979", "17841466188660965"]);
@@ -62,6 +68,7 @@ function adminRoute(t: string): string {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Ana necesita más de los 10s por defecto (Claude + envío)
 
 interface WaMedia { id?: string; caption?: string; mime_type?: string; filename?: string }
 interface WaMessage {
@@ -373,9 +380,11 @@ export async function POST(req: Request) {
             if (reply) {
               await sendMetaDM(String(lead.contacto), reply);
               await addConvoMsg(String(lead.contacto), "", "ana", reply, undefined, canal);
+            } else {
+              logFail("dm-" + canal, "reply null (tipo " + String(lead.waType) + ")");
             }
-          } catch {
-            /* si falla el envío no rompemos la recepción */
+          } catch (e) {
+            logFail("dm-" + canal, e); // si falla el envío no rompemos la recepción
           }
         }
       } else if (lead.kind === "comment") {
@@ -413,13 +422,13 @@ export async function POST(req: Request) {
             await replyComment(commentId, plataforma, pub);
             await patchComment(commentId, { replied: { text: pub, at: new Date().toISOString() } });
             extra = " · Ana respondió";
-          } catch { /* sin permiso o comentario borrado: queda para respuesta manual */ }
+          } catch (e) { logFail("comment-reply", e); /* sin permiso o comentario borrado: queda manual */ }
           if (conIntencion) {
             try {
               await sendPrivateReply(commentId, pick(DM_COMENTARIO));
               await patchComment(commentId, { dmSent: true });
               extra += " + DM enviado";
-            } catch { /* fuera de la ventana de 7 días o DMs cerrados */ }
+            } catch (e) { logFail("comment-dm", e); /* fuera de la ventana de 7 días o DMs cerrados */ }
           }
         }
 
