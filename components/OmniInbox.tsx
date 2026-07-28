@@ -39,8 +39,8 @@ async function resizeImage(file: File, maxDim = 1600, quality = 0.82): Promise<B
 function mapReal(list: Array<Record<string, unknown>>): Item[] {
   return list.map((c) => ({
     id: "r:" + c.id,
-    contact: { name: (c.nombre as string) || (c.id as string), avatarHue: 150 },
-    channel: "whatsapp" as Channel,
+    contact: { name: (c.nombre as string) || (c.id as string), avatarHue: c.canal === "instagram" ? 330 : c.canal === "facebook" ? 215 : 150 },
+    channel: ((c.canal as Channel) || "whatsapp") as Channel,
     stage: "nuevo",
     idea: "",
     unread: !!c.unread,
@@ -163,6 +163,10 @@ export default function OmniInbox() {
   function pickFile() {
     if (!selected?.real) {
       alert("Los adjuntos funcionan en los chats REALES de WhatsApp 🖤 (este es de demostración)");
+      return;
+    }
+    if (selected.channel !== "whatsapp") {
+      alert("Por ahora las fotos solo se envían por WhatsApp; en Instagram y Messenger va solo texto 🖤");
       return;
     }
     fileRef.current?.click();

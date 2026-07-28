@@ -1,4 +1,4 @@
-// Conversaciones REALES de WhatsApp (clave "convos" en Neon).
+// Conversaciones REALES de WhatsApp / Instagram / Messenger (clave "convos" en Neon).
 // El webhook agrega lo entrante y las respuestas de Ana; el panel agrega lo del equipo.
 import { loadJSON, saveJSON } from "./store";
 
@@ -10,9 +10,9 @@ export interface ConvoMsg {
   img?: string; // miniatura en dataURL (fotos enviadas/recibidas)
 }
 export interface Convo {
-  id: string; // el número del contacto
+  id: string; // el número (WhatsApp) o id de usuario (IG/Messenger) del contacto
   nombre: string;
-  canal: "whatsapp";
+  canal: "whatsapp" | "instagram" | "facebook";
   messages: ConvoMsg[];
   lastAt: string;
   unread: boolean;
@@ -28,13 +28,14 @@ export async function addConvoMsg(
   sender: ConvoMsg["sender"],
   text: string,
   img?: string,
+  canal?: Convo["canal"],
 ): Promise<void> {
   if (!contacto || (!text && !img)) return;
   const convos = await getConvos();
   let c = convos.find((x) => x.id === contacto);
   const now = new Date().toISOString();
   if (!c) {
-    c = { id: contacto, nombre: nombre || contacto, canal: "whatsapp", messages: [], lastAt: now, unread: false };
+    c = { id: contacto, nombre: nombre || contacto, canal: canal || "whatsapp", messages: [], lastAt: now, unread: false };
     convos.unshift(c);
   }
   if (nombre && c.nombre === c.id) c.nombre = nombre;

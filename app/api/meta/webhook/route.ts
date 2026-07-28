@@ -3,6 +3,7 @@ import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
 import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
+import { fbConfigured, sendMetaDM, fetchMetaName } from "@/lib/meta-send";
 import { getSettings } from "@/lib/settings";
 import { addConvoMsg } from "@/lib/convos";
 import { pushAll } from "@/lib/push";
@@ -29,7 +30,7 @@ interface WaMessage {
   button?: { text?: string };
   interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
 }
-interface Messaging { sender?: { id?: string }; message?: { text?: string } }
+interface Messaging { sender?: { id?: string }; message?: { text?: string; is_echo?: boolean } }
 interface Change { field?: string; value?: Record<string, unknown> }
 interface Entry { changes?: Change[]; messaging?: Messaging[] }
 
@@ -80,7 +81,7 @@ function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: st
 
 // De un evento de Meta saca un lead (WhatsApp / Instagram / Facebook)
 function extractLead(object: string, entry: Entry | null):
-  | (Record<string, unknown> & { waType?: string; mediaId?: string; caption?: string; texto?: string })
+  | (Record<string, unknown> & { waType?: string; mediaId?: string; caption?: string; texto?: string; kind?: "dm" | "comment" })
   | null {
   if (!entry) return null;
 
@@ -109,10 +110,10 @@ function extractLead(object: string, entry: Entry | null):
 
   const plat = object === "instagram" ? "Instagram" : "Facebook";
 
-  // DM (Instagram / Messenger)
+  // DM (Instagram / Messenger) — los ecos de lo que enviamos nosotros se ignoran
   const dm = entry.messaging?.[0];
-  if (dm?.message?.text) {
-    return { nombre: plat + " (DM)", contacto: dm.sender?.id || "", servicio: plat + " · DM", idea: dm.message.text, origen: object };
+  if (dm?.message?.text && !dm.message.is_echo) {
+    return { nombre: plat + " (DM)", contacto: dm.sender?.id || "", servicio: plat + " · DM", idea: dm.message.text, origen: object, kind: "dm" };
   }
 
   // Comentario (Instagram comments / Facebook feed)
@@ -122,7 +123,7 @@ function extractLead(object: string, entry: Entry | null):
     if (ch.field === "feed" && v.item && v.item !== "comment") return null; // solo comentarios
     const from = v.from as { name?: string; username?: string; id?: string } | undefined;
     const text = (v.text as string) || (v.message as string) || "[comentario]";
-    return { nombre: from?.name || from?.username || plat + " (comentario)", contacto: from?.id || from?.username || "", servicio: "Comentario " + plat, idea: text, origen: object };
+    return { nombre: from?.name || from?.username || plat + " (comentario)", contacto: from?.id || from?.username || "", servicio: "Comentario " + plat, idea: text, origen: object, kind: "comment" };
   }
 
   return null;
@@ -216,8 +217,33 @@ export async function POST(req: Request) {
             /* si falla el envío no rompemos la recepción */
           }
         }
+      } else if (lead.kind === "dm" && lead.contacto) {
+        // DM de Instagram o Messenger: chat en el inbox + push + respuesta de Ana
+        const canal = lead.origen === "instagram" ? "instagram" as const : "facebook" as const;
+        const nombre = (await fetchMetaName(String(lead.contacto)).catch(() => "")) || String(lead.nombre || "");
+        lead.nombre = nombre;
+        await upsertLeadByContact(lead);
+        await addConvoMsg(String(lead.contacto), nombre, "coleccionista", String(lead.idea || ""), undefined, canal);
+        pushAll("💬 " + (nombre || (canal === "instagram" ? "Instagram" : "Messenger")), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
+
+        const cfg = await getSettings();
+        if (fbConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
+          try {
+            const { reply } = await anovaReply(String(lead.idea || ""), nombre);
+            if (reply) {
+              await sendMetaDM(String(lead.contacto), reply);
+              await addConvoMsg(String(lead.contacto), "", "ana", reply, undefined, canal);
+            }
+          } catch {
+            /* si falla el envío no rompemos la recepción */
+          }
+        }
       } else {
         await addLead(lead);
+        if (lead.kind === "comment") {
+          const plataforma = lead.origen === "instagram" ? "Instagram" : "Facebook";
+          pushAll("💬 Comentario en " + plataforma, `${lead.nombre}: ${String(lead.idea || "")}`.slice(0, 160), "/os").catch(() => {});
+        }
       }
     }
   } catch {
