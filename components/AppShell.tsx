@@ -18,7 +18,9 @@ import {
   Bell,
   BellOff,
   LogOut,
+  Rocket,
 } from "lucide-react";
+import FuncionesPanel from "./FuncionesPanel";
 import SistemaAdmin from "./SistemaAdmin";
 import BootSequence from "./BootSequence";
 import { Logo } from "./Logo";
@@ -32,7 +34,7 @@ import ReservasAdmin from "./ReservasAdmin";
 import Planner from "./Planner";
 import Login from "./Login";
 
-type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "usuarios" | "sistema";
+type View = "flujos" | "omni" | "crm" | "reservas" | "planner" | "agenda" | "sitio" | "funciones" | "usuarios" | "sistema";
 
 // Insinuaciones contextuales: aparecen en el módulo donde el usuario podría
 // querer algo más (cosas que requieren desarrollo PRODY-G)
@@ -61,6 +63,7 @@ const ITEMS = [
   { id: "planner" as const, label: "Planner", Icon: Megaphone },
   { id: "agenda" as const, label: "Agenda", Icon: CalendarDays },
   { id: "sitio" as const, label: "Sitio", Icon: Globe },
+  { id: "funciones" as const, label: "Funciones", Icon: Rocket },
   { id: "usuarios" as const, label: "Usuarios", Icon: Users },
 ];
 
@@ -253,6 +256,7 @@ export default function AppShell() {
         {current === "planner" && <Planner />}
         {current === "agenda" && <Agenda />}
         {current === "sitio" && <SiteAdmin />}
+        {current === "funciones" && <FuncionesPanel isOwner={!!user.owner} />}
         {current === "usuarios" && isAdmin && <UsersAdmin />}
         {current === "sistema" && user.owner && <SistemaAdmin />}
       </main>

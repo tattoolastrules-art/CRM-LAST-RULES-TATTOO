@@ -9,6 +9,7 @@ export const MODULOS = [
   { id: "planner", label: "Planner" },
   { id: "agenda", label: "Agenda" },
   { id: "sitio", label: "Sitio" },
+  { id: "funciones", label: "Funciones" },
 ] as const;
 
 export interface Settings {
