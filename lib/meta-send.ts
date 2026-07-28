@@ -1,6 +1,8 @@
 // Envío de DMs por la Send API de Meta (Messenger e Instagram) con el token de página.
 // Requiere FB_PAGE_TOKEN con pages_messaging (+ instagram_manage_messages para IG).
+// Se usa el ID explícito de la página (no "me"): funciona también con tokens de sistema.
 const GRAPH = "https://graph.facebook.com/v23.0";
+const PAGE_ID = process.env.FB_PAGE_ID || "797899886739979";
 
 export function fbConfigured(): boolean {
   return !!process.env.FB_PAGE_TOKEN;
@@ -9,7 +11,7 @@ export function fbConfigured(): boolean {
 export async function sendMetaDM(recipientId: string, text: string): Promise<void> {
   const token = process.env.FB_PAGE_TOKEN;
   if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
-  const r = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(token)}`, {
+  const r = await fetch(`${GRAPH}/${PAGE_ID}/messages?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -18,7 +20,7 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
       message: { text: text.slice(0, 1000) },
     }),
   });
-  if (!r.ok) throw new Error("Meta send: " + (await r.text()).slice(0, 300));
+  if (!r.ok) throw new Error("Meta send [tok " + token.slice(0, 10) + "…]: " + (await r.text()).slice(0, 300));
 }
 
 // Private Reply oficial de Meta: manda un DM al autor de un comentario
@@ -26,7 +28,7 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
 export async function sendPrivateReply(commentId: string, text: string): Promise<void> {
   const token = process.env.FB_PAGE_TOKEN;
   if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
-  const r = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(token)}`, {
+  const r = await fetch(`${GRAPH}/${PAGE_ID}/messages?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
