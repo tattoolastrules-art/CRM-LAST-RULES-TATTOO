@@ -21,16 +21,21 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
   if (!r.ok) throw new Error("Meta send: " + (await r.text()).slice(0, 300));
 }
 
-// Nombre del contacto (mejor esfuerzo: Messenger da name; IG suele dar username)
+// Nombre del contacto (mejor esfuerzo: Messenger da name; Instagram da username)
+// OJO: pedir name y username JUNTOS revienta en Messenger (username es solo de IG).
 export async function fetchMetaName(senderId: string): Promise<string> {
   const token = process.env.FB_PAGE_TOKEN;
   if (!token || !senderId) return "";
-  try {
-    const r = await fetch(`${GRAPH}/${senderId}?fields=name,username&access_token=${encodeURIComponent(token)}`);
-    if (!r.ok) return "";
-    const d = (await r.json()) as { name?: string; username?: string };
-    return d.name || (d.username ? "@" + d.username : "");
-  } catch {
-    return "";
+  for (const campo of ["name", "username"] as const) {
+    try {
+      const r = await fetch(`${GRAPH}/${senderId}?fields=${campo}&access_token=${encodeURIComponent(token)}`);
+      if (!r.ok) continue;
+      const d = (await r.json()) as { name?: string; username?: string };
+      if (d.name) return d.name;
+      if (d.username) return "@" + d.username;
+    } catch {
+      /* siguiente campo */
+    }
   }
+  return "";
 }
