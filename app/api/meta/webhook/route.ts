@@ -3,8 +3,8 @@ import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
 import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
 import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
-import { fbConfigured, sendMetaDM, fetchMetaName, fetchUrlBase64 } from "@/lib/meta-send";
-import { addComment } from "@/lib/comments";
+import { fbConfigured, sendMetaDM, fetchMetaName, fetchUrlBase64, replyComment, sendPrivateReply } from "@/lib/meta-send";
+import { addComment, patchComment } from "@/lib/comments";
 
 // Ids propios (página FB e IG del estudio): sus comentarios/respuestas no se registran (anti-bucle)
 const OWN_IDS = new Set(["797899886739979", "17841466188660965"]);
@@ -15,6 +15,27 @@ import { notifyStudio } from "@/lib/notify";
 
 const ABONO_RE = /(abono|comprobante|consign|transferencia|transferí|nequi|daviplata|pag(u?é|ado|o\s+ya))/i;
 const CONFIRM_RE = /^(confirmo|s[ií],?\s*(confirmo|asistir[eé]|voy|all[ií]\s+estar[eé])|all[ií]\s+estar[eé])/i;
+
+// Comentario con intención de compra → además de responder público, se le envía DM
+const INTENT_RE = /(precio|cu[aá]nto|vale|cotiz|info|agendar|agenda|cita|turno|disponib|quiero uno|quiero un|me interesa|c[oó]mo hago|d[oó]nde (est[aá]n|queda)|ubicaci[oó]n|horario|domicilio|inbox|dm)/i;
+
+// Respuestas públicas rotativas (predefinidas: cero tokens)
+const PUB_GRACIAS = [
+  "🖤🖤",
+  "¡Gracias! 🖤",
+  "¡Mil gracias! Aquí te esperamos 🖤",
+  "Se viene más 🔥🖤",
+];
+const PUB_INTERES = [
+  "¡Hola! Te escribimos por DM 🖤 revisa tus mensajes",
+  "Te mandamos la info por interno 🖤",
+  "¡Claro que sí! Te escribimos al DM 🖤",
+];
+const DM_COMENTARIO = [
+  "¡Hola! Vimos tu comentario 🖤 Soy Ana, del estudio Last Rules. Cuéntame: ¿qué tatuaje tienes en mente? Te paso precios y agenda sin compromiso.",
+  "¡Hola! Soy Ana, de Last Rules Tattoo 🖤 Vi tu comentario y te escribo de una. ¿Qué idea tienes? Así te cuento valores y disponibilidad.",
+];
+const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -308,18 +329,42 @@ export async function POST(req: Request) {
       } else if (lead.kind === "comment") {
         // Comentario de IG/FB: va a la bandeja Comentarios del inbox (no al CRM de leads)
         const plataforma = lead.origen === "instagram" ? "instagram" as const : "facebook" as const;
-        await addComment({
-          id: String(lead.commentId || "c" + Date.now()),
+        const commentId = String(lead.commentId || "c" + Date.now());
+        const texto = String(lead.idea || "");
+        const esNuevo = await addComment({
+          id: commentId,
           platform: plataforma,
           from: String(lead.nombre || ""),
           fromId: String(lead.contacto || ""),
-          text: String(lead.idea || ""),
+          text: texto,
           at: new Date().toISOString(),
           postId: String(lead.postId || "") || undefined,
         });
+
+        // Auto-respuesta (mismo interruptor NOVA): pública siempre, DM si hay intención de compra.
+        // Predefinidas rotativas = cero tokens; la IA entra cuando el cliente responda el DM.
+        let extra = "";
+        const cfg = await getSettings();
+        if (esNuevo && lead.commentId && fbConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
+          const conIntencion = INTENT_RE.test(texto);
+          try {
+            const pub = pick(conIntencion ? PUB_INTERES : PUB_GRACIAS);
+            await replyComment(commentId, plataforma, pub);
+            await patchComment(commentId, { replied: { text: pub, at: new Date().toISOString() } });
+            extra = " · Ana respondió";
+          } catch { /* sin permiso o comentario borrado: queda para respuesta manual */ }
+          if (conIntencion) {
+            try {
+              await sendPrivateReply(commentId, pick(DM_COMENTARIO));
+              await patchComment(commentId, { dmSent: true });
+              extra += " + DM enviado";
+            } catch { /* fuera de la ventana de 7 días o DMs cerrados */ }
+          }
+        }
+
         pushAll(
-          "💬 Comentario en " + (plataforma === "instagram" ? "Instagram" : "Facebook"),
-          `${lead.nombre}: ${String(lead.idea || "")}`.slice(0, 160),
+          "💬 Comentario en " + (plataforma === "instagram" ? "Instagram" : "Facebook") + extra,
+          `${lead.nombre}: ${texto}`.slice(0, 160),
           "/os",
         ).catch(() => {});
       } else {

@@ -14,18 +14,21 @@ export interface StudioComment {
   replied?: { text: string; at: string };
   liked?: boolean;
   hidden?: boolean;
+  dmSent?: boolean; // se le envió DM automático (comentario con intención de compra)
 }
 
 export async function getComments(): Promise<StudioComment[]> {
   return loadJSON<StudioComment[]>("comments", []);
 }
 
-export async function addComment(c: StudioComment): Promise<void> {
-  if (!c.id) return;
+// Devuelve true si el comentario es nuevo (para responderlo UNA sola vez)
+export async function addComment(c: StudioComment): Promise<boolean> {
+  if (!c.id) return false;
   const all = await getComments();
-  if (all.some((x) => x.id === c.id)) return; // Meta reenvía eventos: sin duplicados
+  if (all.some((x) => x.id === c.id)) return false; // Meta reenvía eventos: sin duplicados
   all.unshift(c);
   await saveJSON("comments", all.slice(0, 200));
+  return true;
 }
 
 export async function patchComment(id: string, patch: Partial<StudioComment>): Promise<StudioComment | null> {

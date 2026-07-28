@@ -21,6 +21,23 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
   if (!r.ok) throw new Error("Meta send: " + (await r.text()).slice(0, 300));
 }
 
+// Private Reply oficial de Meta: manda un DM al autor de un comentario
+// (válido hasta 7 días después del comentario; funciona en IG y FB)
+export async function sendPrivateReply(commentId: string, text: string): Promise<void> {
+  const token = process.env.FB_PAGE_TOKEN;
+  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const r = await fetch(`${GRAPH}/me/messages?access_token=${encodeURIComponent(token)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recipient: { comment_id: commentId },
+      messaging_type: "RESPONSE",
+      message: { text: text.slice(0, 1000) },
+    }),
+  });
+  if (!r.ok) throw new Error("private reply: " + (await r.text()).slice(0, 300));
+}
+
 // Responde un comentario (IG: /replies · FB: /comments) con el token de página
 export async function replyComment(commentId: string, platform: "instagram" | "facebook", text: string): Promise<void> {
   const token = process.env.FB_PAGE_TOKEN;

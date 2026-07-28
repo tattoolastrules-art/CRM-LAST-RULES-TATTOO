@@ -80,6 +80,7 @@ interface CommentRow {
   replied?: { text: string; at: string };
   liked?: boolean;
   hidden?: boolean;
+  dmSent?: boolean;
 }
 
 // Ventana de 24h: cuánto queda para poder responder libre (desde el último mensaje del cliente)
@@ -357,9 +358,9 @@ export default function OmniInbox() {
           {showComments ? (
             <div className="space-y-2 p-2">
               <p className="px-1 text-[11px] leading-relaxed text-[#8696a0]">
-                Comentarios en las publicaciones de Instagram y Facebook. Puedes <b>responder</b> (queda público
-                debajo del comentario), dar <b>like</b> (solo Facebook — Instagram no lo permite desde fuera de su
-                app) y <b>ocultar</b> los que no aporten.
+                Comentarios de Instagram y Facebook. Con NOVA encendida, <b>Ana responde sola en público</b> y si el
+                comentario muestra interés (precio, cita, info…) <b>le envía DM automático</b> 💬. Aquí también puedes
+                responder tú, dar <b>like</b> (solo Facebook) y <b>ocultar</b> los que no aporten.
               </p>
               {comments.length === 0 && (
                 <div className="px-1 py-6 text-center text-xs text-[#8696a0]">
@@ -376,6 +377,7 @@ export default function OmniInbox() {
                   <div className="text-sm text-[#e9edef]">{c.text}</div>
                   <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8696a0]">
                     {c.liked && <span className="text-[#1877f2]">👍 con like</span>}
+                    {c.dmSent && <span className="text-[#00a884]">💬 DM enviado</span>}
                     {c.hidden && <span>🙈 oculto</span>}
                   </div>
                   {c.replied ? (
