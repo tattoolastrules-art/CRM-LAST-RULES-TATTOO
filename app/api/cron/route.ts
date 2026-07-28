@@ -1,4 +1,5 @@
 import { runFollowups } from "@/lib/followups";
+import { checkWindowAlerts } from "@/lib/convos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,5 +13,6 @@ export async function GET(req: Request) {
     if (auth !== `Bearer ${secret}`) return new Response("Forbidden", { status: 403 });
   }
   const res = await runFollowups();
-  return Response.json({ ok: true, ...res, at: new Date().toISOString() });
+  const alertas24 = await checkWindowAlerts().catch(() => 0);
+  return Response.json({ ok: true, ...res, alertas24, at: new Date().toISOString() });
 }

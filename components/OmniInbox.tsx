@@ -6,6 +6,7 @@ import {
   Search,
   Smile,
   Paperclip,
+  FileText,
   Send,
   Sparkles,
   Camera,
@@ -69,6 +70,15 @@ function timeOf(iso: string) {
   return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Ventana de 24h: cuánto queda para poder responder libre (desde el último mensaje del cliente)
+function ventanaDe(c?: Item): { abierta: boolean; horas: number } | null {
+  if (!c?.real) return null;
+  const lastIn = [...c.messages].reverse().find((m) => m.sender === "coleccionista");
+  if (!lastIn) return null;
+  const rest = 24 - (Date.now() - +new Date(lastIn.at)) / 3600e3;
+  return { abierta: rest > 0, horas: Math.max(0, rest) };
+}
+
 export default function OmniInbox() {
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -80,6 +90,9 @@ export default function OmniInbox() {
   const [real, setReal] = useState<Item[]>([]);
   const [sending, setSending] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [tplKind, setTplKind] = useState<"lr_seguimiento" | "lr_confirmacion_cita">("lr_seguimiento");
+  const [tplText, setTplText] = useState("¿Cómo vas con tu tatuaje? ¿Todo bien con la cicatrización?");
   const endRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -158,6 +171,27 @@ export default function OmniInbox() {
       ),
     );
     setDraft("");
+  }
+
+  function sendTemplate() {
+    if (!selected?.real || !tplText.trim() || sending) return;
+    const contacto = selected.id.slice(2);
+    setSending(true);
+    fetch("/api/convos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "template", contacto, template: tplKind, texto: tplText.trim() }),
+    })
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) alert(d.error || "No se pudo enviar la plantilla");
+        else {
+          setTplOpen(false);
+          if (d.convos) setReal(mapReal(d.convos));
+        }
+      })
+      .catch(() => alert("Error de conexión"))
+      .finally(() => setSending(false));
   }
 
   function pickFile() {
@@ -353,6 +387,17 @@ export default function OmniInbox() {
             >
               {chIcon(selected.channel, 11)} {CHANNEL_LABELS[selected.channel]}
               {selected.real && <span className="text-[#00a884]"> · en vivo</span>}
+              {(() => {
+                const v = ventanaDe(selected);
+                if (!v) return null;
+                return v.abierta ? (
+                  <span className={v.horas <= 6 ? "text-[#f5a623]" : "text-[#8696a0]"}>
+                    {" "}· ventana {Math.floor(v.horas)}h{v.horas <= 6 ? " ⏳" : ""}
+                  </span>
+                ) : (
+                  <span className="text-[#ef6a6a]"> · ventana cerrada{selected.channel === "whatsapp" ? " — usa Plantillas" : ""}</span>
+                );
+              })()}
               {selected.contact.city && (
                 <span className="text-[#8696a0]"> · {selected.contact.city}</span>
               )}
@@ -420,6 +465,57 @@ export default function OmniInbox() {
               ))}
             </div>
           )}
+          {tplOpen && (
+            <div className="mb-2 rounded-xl bg-[#0b141a] p-3">
+              <div className="mb-1 text-sm font-medium text-[#e9edef]">Plantillas de WhatsApp</div>
+              <p className="mb-2 text-xs leading-relaxed text-[#8696a0]">
+                WhatsApp solo permite escribir libre durante las <b>24 horas</b> siguientes al último mensaje del
+                cliente. Si esa ventana se cierra, la <b>única</b> forma de retomar el chat es con una plantilla
+                aprobada por Meta. El sistema avisa con tiempo cuando un chat está por vencerse ⏳.
+              </p>
+              {!selected?.real || selected.channel !== "whatsapp" ? (
+                <p className="text-xs text-[#f5a623]">
+                  Este chat no es de WhatsApp: en Instagram y Messenger no existen plantillas — si la ventana se
+                  cierra, toca esperar a que el cliente vuelva a escribir.
+                </p>
+              ) : (
+                <>
+                  <div className="mb-2 flex gap-2">
+                    <button
+                      onClick={() => { setTplKind("lr_seguimiento"); setTplText("¿Cómo vas con tu tatuaje? ¿Todo bien con la cicatrización?"); }}
+                      className={`rounded-lg px-2.5 py-1 text-xs transition ${tplKind === "lr_seguimiento" ? "bg-[#00a884] text-[#0b141a]" : "bg-[#2a3942] text-[#e9edef]"}`}
+                    >
+                      Reabrir chat
+                    </button>
+                    <button
+                      onClick={() => { setTplKind("lr_confirmacion_cita"); setTplText("el viernes a las 3:00 p. m."); }}
+                      className={`rounded-lg px-2.5 py-1 text-xs transition ${tplKind === "lr_confirmacion_cita" ? "bg-[#00a884] text-[#0b141a]" : "bg-[#2a3942] text-[#e9edef]"}`}
+                    >
+                      Confirmar cita
+                    </button>
+                  </div>
+                  <input
+                    value={tplText}
+                    onChange={(e) => setTplText(e.target.value)}
+                    placeholder={tplKind === "lr_seguimiento" ? "El mensaje para el cliente…" : "La fecha y hora de la cita…"}
+                    className="mb-2 w-full rounded-lg bg-[#2a3942] px-3 py-2 text-sm text-[#e9edef] outline-none placeholder:text-[#8696a0]"
+                  />
+                  <div className="mb-2 rounded-lg border border-[#2a3942] px-2.5 py-1.5 text-xs italic text-[#8696a0]">
+                    {tplKind === "lr_seguimiento"
+                      ? `¡Hola ${selected.contact.name.split(" ")[0]}! Te escribo de Last Rules Tattoo 🖤 ${tplText} Cualquier duda me escribes por aquí.`
+                      : `¡Hola ${selected.contact.name.split(" ")[0]}! Te escribo de Last Rules Tattoo 🖤 Tienes tu cita ${tplText}. Llega con buena comida, bien hidratado(a) y ropa cómoda. ¿Nos confirmas que asistes?`}
+                  </div>
+                  <button
+                    onClick={sendTemplate}
+                    disabled={sending || !tplText.trim()}
+                    className="rounded-lg bg-[#00a884] px-3 py-1.5 text-xs font-medium text-[#0b141a] disabled:opacity-40"
+                  >
+                    {sending ? "Enviando…" : "Enviar plantilla"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <button
               onClick={suggest}
@@ -434,6 +530,13 @@ export default function OmniInbox() {
             </button>
             <button onClick={pickFile} title="Adjuntar foto" className="rounded-full p-1 text-[#8696a0] transition hover:bg-white/5 hover:text-[#e9edef]">
               <Paperclip size={20} />
+            </button>
+            <button
+              onClick={() => setTplOpen((v) => !v)}
+              title="Plantillas: mensajes aprobados para escribir con la ventana de 24h cerrada"
+              className={`rounded-full p-1 transition hover:bg-white/5 ${tplOpen ? "text-[#00a884]" : "text-[#8696a0]"}`}
+            >
+              <FileText size={20} />
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
             <input
