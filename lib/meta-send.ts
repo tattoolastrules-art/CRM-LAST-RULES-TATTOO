@@ -1,16 +1,36 @@
-// Envío de DMs por la Send API de Meta (Messenger e Instagram) con el token de página.
-// Requiere FB_PAGE_TOKEN con pages_messaging (+ instagram_manage_messages para IG).
-// Se usa el ID explícito de la página (no "me"): funciona también con tokens de sistema.
+// Envío de DMs y gestión de comentarios por la API de Meta (Messenger e Instagram).
+// AUTOSUFICIENTE con el token: si FB_PAGE_TOKEN no es un token de página (p. ej.
+// pegaron el del usuario del sistema), deriva el token de página al vuelo con
+// GET /{page-id}?fields=access_token y lo cachea. Así cualquiera de los dos sirve.
 const GRAPH = "https://graph.facebook.com/v23.0";
 const PAGE_ID = process.env.FB_PAGE_ID || "797899886739979";
+
+let cachedPageToken: string | null = null;
 
 export function fbConfigured(): boolean {
   return !!process.env.FB_PAGE_TOKEN;
 }
 
+async function pageToken(): Promise<string> {
+  if (cachedPageToken) return cachedPageToken;
+  const envTok = process.env.FB_PAGE_TOKEN || "";
+  if (!envTok) throw new Error("FB_PAGE_TOKEN no configurado");
+  try {
+    const r = await fetch(`${GRAPH}/${PAGE_ID}?fields=access_token&access_token=${encodeURIComponent(envTok)}`);
+    const d = (await r.json()) as { access_token?: string };
+    if (d.access_token) {
+      cachedPageToken = d.access_token;
+      return d.access_token;
+    }
+  } catch {
+    /* seguimos con el del entorno */
+  }
+  cachedPageToken = envTok;
+  return envTok;
+}
+
 export async function sendMetaDM(recipientId: string, text: string): Promise<void> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const token = await pageToken();
   const r = await fetch(`${GRAPH}/${PAGE_ID}/messages?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -20,14 +40,13 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
       message: { text: text.slice(0, 1000) },
     }),
   });
-  if (!r.ok) throw new Error("Meta send [tok …" + token.slice(-6) + "]: " + (await r.text()).slice(0, 300));
+  if (!r.ok) throw new Error("Meta send: " + (await r.text()).slice(0, 300));
 }
 
 // Private Reply oficial de Meta: manda un DM al autor de un comentario
 // (válido hasta 7 días después del comentario; funciona en IG y FB)
 export async function sendPrivateReply(commentId: string, text: string): Promise<void> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const token = await pageToken();
   const r = await fetch(`${GRAPH}/${PAGE_ID}/messages?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,8 +61,7 @@ export async function sendPrivateReply(commentId: string, text: string): Promise
 
 // Responde un comentario (IG: /replies · FB: /comments) con el token de página
 export async function replyComment(commentId: string, platform: "instagram" | "facebook", text: string): Promise<void> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const token = await pageToken();
   const path = platform === "instagram" ? `${commentId}/replies` : `${commentId}/comments`;
   const r = await fetch(`${GRAPH}/${path}?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
@@ -55,16 +73,14 @@ export async function replyComment(commentId: string, platform: "instagram" | "f
 
 // Like a un comentario — SOLO Facebook (Instagram no expone like por API)
 export async function likeComment(commentId: string): Promise<void> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const token = await pageToken();
   const r = await fetch(`${GRAPH}/${commentId}/likes?access_token=${encodeURIComponent(token)}`, { method: "POST" });
   if (!r.ok) throw new Error("like comment: " + (await r.text()).slice(0, 300));
 }
 
 // Oculta / muestra un comentario (IG usa "hide", FB usa "is_hidden")
 export async function hideComment(commentId: string, platform: "instagram" | "facebook", hide: boolean): Promise<void> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token) throw new Error("FB_PAGE_TOKEN no configurado");
+  const token = await pageToken();
   const body = platform === "instagram" ? { hide } : { is_hidden: hide };
   const r = await fetch(`${GRAPH}/${commentId}?access_token=${encodeURIComponent(token)}`, {
     method: "POST",
@@ -90,8 +106,13 @@ export async function fetchUrlBase64(url: string): Promise<{ b64: string; mime: 
 // Nombre del contacto (mejor esfuerzo: Messenger da name; Instagram da username)
 // OJO: pedir name y username JUNTOS revienta en Messenger (username es solo de IG).
 export async function fetchMetaName(senderId: string): Promise<string> {
-  const token = process.env.FB_PAGE_TOKEN;
-  if (!token || !senderId) return "";
+  if (!senderId || !fbConfigured()) return "";
+  let token = "";
+  try {
+    token = await pageToken();
+  } catch {
+    return "";
+  }
   for (const campo of ["name", "username"] as const) {
     try {
       const r = await fetch(`${GRAPH}/${senderId}?fields=${campo}&access_token=${encodeURIComponent(token)}`);
