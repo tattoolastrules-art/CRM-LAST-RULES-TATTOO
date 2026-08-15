@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -15,8 +15,12 @@ import {
   type Connection,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { Plus, Pencil, Trash2, List, Workflow as WorkflowIcon, Zap, MessageSquare, GitBranch, Database, UserCog, Sparkles, MessageSquareQuote } from "lucide-react";
 import { flowNodeTypes } from "./flow-nodes";
-import { FLOWS, type FlowDef } from "@/lib/flows";
+import FlowWizard from "./FlowWizard";
+import IceBreakersPanel from "./IceBreakersPanel";
+import { FLOWS, type FlowDef, type FlowNode as FNode } from "@/lib/flows";
+import { customToFlowDef, type CustomFlow } from "@/lib/custom-flows-def";
 
 type Overrides = Record<string, Record<string, string>>;
 
@@ -39,17 +43,50 @@ function toGraph(flow: FlowDef, ov: Overrides): { nodes: Node[]; edges: Edge[] }
   return { nodes, edges };
 }
 
+// Colores/íconos por tipo de nodo (vista Lista, apta para celular)
+const KIND_META: Record<string, { label: string; color: string; Icon: typeof Zap }> = {
+  trigger: { label: "Disparador", color: "#5B8CB7", Icon: Zap },
+  message: { label: "Mensaje", color: "#25D366", Icon: MessageSquare },
+  choice: { label: "Decisión", color: "#C5A059", Icon: GitBranch },
+  action: { label: "Acción", color: "#8E7CC3", Icon: Database },
+  handoff: { label: "Continuar", color: "#D8A24A", Icon: UserCog },
+  ai: { label: "NOVA · IA", color: "#37C7C0", Icon: Sparkles },
+};
+
 export default function FlowBuilder() {
+  const [custom, setCustom] = useState<CustomFlow[]>([]);
   const [activeId, setActiveId] = useState(FLOWS[0].id);
-  const flow = FLOWS.find((f) => f.id === activeId)!;
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [ov, setOv] = useState<Overrides>({});
   const [edit, setEdit] = useState<{ nodeId: string; title: string; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  // null = aún no se decide (evita montar ReactFlow en celular y tirarlo un frame después)
+  const [mode, setMode] = useState<"canvas" | "list" | null>(null);
+  const [wizard, setWizard] = useState<{ open: boolean; initial: CustomFlow | null }>({ open: false, initial: null });
+  const [plantillas, setPlantillas] = useState(false);
+
+  // En celular la vista Lista es mucho más cómoda que el lienzo
+  useEffect(() => {
+    setMode(window.innerWidth < 640 ? "list" : "canvas");
+  }, []);
+
+  const allFlows: FlowDef[] = useMemo(
+    () => [...FLOWS, ...custom.map((c, i) => customToFlowDef(c, i))],
+    [custom],
+  );
+  const flow = allFlows.find((f) => f.id === activeId) ?? allFlows[0];
+  const activeCustom = custom.find((c) => c.id === activeId) || null;
 
   useEffect(() => {
-    fetch("/api/flows").then((r) => (r.ok ? r.json() : null)).then((d) => d && setOv(d.overrides || {})).catch(() => {});
+    fetch("/api/flows")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setOv(d.overrides || {});
+        setCustom(d.custom || []);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -59,14 +96,25 @@ export default function FlowBuilder() {
     setEdit(null);
   }, [activeId, flow, ov, setNodes, setEdges]);
 
-  const onNodeClick = useCallback(
-    (_: unknown, node: Node) => {
-      const d = node.data as unknown as { kind?: string; title?: string; text?: string };
+  const openEditor = useCallback(
+    (d: { kind?: string; title?: string; text?: string }, nodeId: string) => {
+      if (activeCustom) {
+        // Los flujos creados con el asistente se editan con su mismo asistente
+        setWizard({ open: true, initial: activeCustom });
+        return;
+      }
       if (d.kind === "message") {
-        setEdit({ nodeId: node.id, title: d.title || "Mensaje", text: d.text || "" });
+        setEdit({ nodeId, title: d.title || "Mensaje", text: d.text || "" });
       }
     },
-    [],
+    [activeCustom],
+  );
+
+  const onNodeClick = useCallback(
+    (_: unknown, node: Node) => {
+      openEditor(node.data as unknown as { kind?: string; title?: string; text?: string }, node.id);
+    },
+    [openEditor],
   );
 
   async function saveEdit() {
@@ -90,6 +138,22 @@ export default function FlowBuilder() {
     }
   }
 
+  async function deleteCustom(cf: CustomFlow) {
+    if (!confirm(`¿Borrar el flujo “${cf.name}”? Ana dejará de responderlo.`)) return;
+    const r = await fetch("/api/flows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "custom-delete", id: cf.id }),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setCustom(d.custom || []);
+      if (activeId === cf.id) setActiveId(FLOWS[0].id);
+    } else {
+      alert("Solo administradores pueden borrar flujos.");
+    }
+  }
+
   const onConnect = useCallback(
     (c: Connection) =>
       setEdges((eds) =>
@@ -101,13 +165,22 @@ export default function FlowBuilder() {
     [setEdges],
   );
 
+  // Nodos con el texto editado aplicado (para la vista Lista)
+  const listNodes: FNode[] = flow.nodes.map((n) => ({ ...n, text: ov[flow.id]?.[n.id] ?? n.text }));
+
   return (
     <div className="flex h-full">
-      <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-line/60 p-2 md:block">
+      <aside className="hidden w-56 shrink-0 flex-col overflow-y-auto border-r border-line/60 p-2 md:flex">
+        <button
+          onClick={() => setWizard({ open: true, initial: null })}
+          className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 px-2.5 py-2 text-xs font-semibold text-gold-soft transition hover:bg-gold/20"
+        >
+          <Plus size={14} /> Crear flujo
+        </button>
         <div className="px-2 pb-2 pt-1 text-[10px] uppercase tracking-widest text-bone-dim">
-          Flujos ({FLOWS.length})
+          Flujos ({allFlows.length})
         </div>
-        {FLOWS.map((f) => (
+        {allFlows.map((f) => (
           <button
             key={f.id}
             onClick={() => setActiveId(f.id)}
@@ -118,7 +191,7 @@ export default function FlowBuilder() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="rounded bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold">
+              <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${f.code.startsWith("P") ? "bg-[#37C7C0]/15 text-[#37C7C0]" : "bg-gold/15 text-gold"}`}>
                 {f.code}
               </span>
               <span className="truncate text-xs font-medium text-bone">
@@ -139,21 +212,120 @@ export default function FlowBuilder() {
           <select
             value={activeId}
             onChange={(e) => setActiveId(e.target.value)}
-            className="max-w-[60vw] rounded-lg border border-line bg-navy-card px-2 py-1 text-xs text-bone outline-none md:hidden"
+            className="max-w-[48vw] rounded-lg border border-line bg-navy-card px-2 py-1 text-xs text-bone outline-none md:hidden"
           >
-            {FLOWS.map((f) => (
+            {allFlows.map((f) => (
               <option key={f.id} value={f.id}>{f.code} · {f.name}</option>
             ))}
           </select>
+          <button
+            onClick={() => setWizard({ open: true, initial: null })}
+            className="flex items-center gap-1 rounded-lg border border-gold/40 bg-gold/10 px-2 py-1 text-[11px] font-semibold text-gold-soft md:hidden"
+          >
+            <Plus size={12} /> Crear
+          </button>
           <span className="hidden rounded bg-gold/15 px-1.5 py-0.5 text-[10px] font-semibold text-gold md:inline">{flow.code}</span>
           <span className="hidden truncate font-display text-sm text-bone md:inline">{flow.name}</span>
           <span className="hidden min-w-0 truncate text-[11px] text-bone-dim lg:inline">· {flow.desc}</span>
-          <span className="ml-auto rounded-full border border-line/60 px-2 py-0.5 text-[10px] text-bone-dim">
-            ✏️ Toca un mensaje verde para editarlo
-          </span>
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {activeCustom && (
+              <>
+                <button
+                  onClick={() => setWizard({ open: true, initial: activeCustom })}
+                  title="Editar este flujo con el asistente"
+                  className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] text-bone-dim transition hover:text-bone"
+                >
+                  <Pencil size={12} /> <span className="hidden sm:inline">Editar</span>
+                </button>
+                <button
+                  onClick={() => deleteCustom(activeCustom)}
+                  title="Borrar este flujo"
+                  className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] text-bone-dim transition hover:text-red-400"
+                >
+                  <Trash2 size={12} /> <span className="hidden sm:inline">Borrar</span>
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setPlantillas(true)}
+              title="Preguntas listas que ven los clientes al abrir el chat (Instagram, Messenger y WhatsApp)"
+              className="flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[11px] text-bone-dim transition hover:text-bone"
+            >
+              <MessageSquareQuote size={12} /> <span className="hidden sm:inline">Plantillas</span>
+            </button>
+            {/* Lista ↔ Lienzo */}
+            <div className="flex overflow-hidden rounded-lg border border-line">
+              <button
+                onClick={() => setMode("list")}
+                title="Vista lista (cómoda en celular)"
+                className={`flex items-center gap-1 px-2 py-1 text-[11px] transition ${mode === "list" ? "bg-gold/15 text-gold" : "text-bone-dim hover:text-bone"}`}
+              >
+                <List size={12} /> Lista
+              </button>
+              <button
+                onClick={() => setMode("canvas")}
+                title="Vista lienzo (cajitas conectadas)"
+                className={`flex items-center gap-1 px-2 py-1 text-[11px] transition ${mode === "canvas" ? "bg-gold/15 text-gold" : "text-bone-dim hover:text-bone"}`}
+              >
+                <WorkflowIcon size={12} /> Lienzo
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="relative min-h-0 flex-1">
+        {mode === null ? (
+          <div className="flex h-full items-center justify-center text-sm text-bone-dim">…</div>
+        ) : mode === "list" ? (
+          /* Vista LISTA: los pasos del flujo en orden, como tarjetas (ideal celular) */
+          <div className="h-full overflow-y-auto px-3 py-3">
+            <div className="mx-auto max-w-xl">
+              <div className="mb-2 text-[11px] text-bone-dim">
+                {activeCustom
+                  ? "✏️ Toca cualquier tarjeta para editar este flujo con el asistente"
+                  : "✏️ Toca una tarjeta verde de Mensaje para editar lo que responde Ana"}
+              </div>
+              {listNodes.map((n, i) => {
+                const meta = KIND_META[n.kind] ?? KIND_META.message;
+                const Icon = meta.Icon;
+                const editable = activeCustom || n.kind === "message";
+                return (
+                  <div key={n.id} className="relative">
+                    {i > 0 && <div className="ml-5 h-3 w-px bg-line" />}
+                    <button
+                      onClick={() => editable && openEditor(n, n.id)}
+                      disabled={!editable}
+                      className={`w-full rounded-xl border bg-[#1b2336] p-0 text-left ${editable ? "transition hover:brightness-110" : "cursor-default"}`}
+                      style={{ borderColor: meta.color + "55" }}
+                    >
+                      <div
+                        className="flex items-center gap-1.5 rounded-t-xl px-3 py-1.5 text-[11px] font-semibold tracking-wide"
+                        style={{ background: meta.color + "22", color: meta.color }}
+                      >
+                        <Icon size={13} />
+                        {n.title || meta.label}
+                        {editable && n.kind === "message" && <Pencil size={11} className="ml-auto opacity-60" />}
+                      </div>
+                      <div className="px-3 py-2.5">
+                        {n.text && <div className="text-[12.5px] leading-snug text-bone">{n.text}</div>}
+                        {!!n.options?.length && (
+                          <div className={n.text ? "mt-2 flex flex-wrap gap-1.5" : "flex flex-wrap gap-1.5"}>
+                            {n.options.map((o, j) => (
+                              <span key={j} className="rounded-md border border-gold/30 bg-[#0f1522] px-2 py-1 text-[11px] text-gold-soft">
+                                {o}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -179,10 +351,11 @@ export default function FlowBuilder() {
           />
           <Controls showInteractive={false} className="!border-line !bg-[#1b2336]" />
         </ReactFlow>
+        )}
 
         {/* Editor del mensaje seleccionado */}
         {edit && (
-          <div className="glass absolute inset-x-3 bottom-3 z-20 rounded-xl p-3">
+          <div className="glass absolute inset-x-0 bottom-0 z-20 rounded-t-xl p-3 sm:inset-x-3 sm:bottom-3 sm:rounded-xl">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-xs font-semibold text-bone">✏️ {edit.title} <span className="text-bone-dim">· esto es lo que Ana responde</span></span>
               <button onClick={() => setEdit(null)} className="text-bone-dim hover:text-bone">✕</button>
@@ -190,12 +363,12 @@ export default function FlowBuilder() {
             <textarea
               value={edit.text}
               onChange={(e) => setEdit({ ...edit, text: e.target.value })}
-              rows={3}
+              rows={4}
               className="w-full resize-y rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
             />
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[10px] text-bone-dim/70">Los cambios aplican de una en las respuestas de Ana · Crear flujos o ramas nuevas requiere desarrollo (PRODY-G)</span>
-              <button onClick={saveEdit} disabled={saving} className="shrink-0 rounded-lg bg-gold px-4 py-1.5 text-sm font-semibold text-navy hover:bg-gold-soft disabled:opacity-50">
+              <span className="hidden text-[10px] text-bone-dim/70 sm:inline">Los cambios aplican de una en las respuestas de Ana · Para flujos nuevos usa “Crear flujo”</span>
+              <button onClick={saveEdit} disabled={saving} className="ml-auto shrink-0 rounded-lg bg-gold px-4 py-1.5 text-sm font-semibold text-navy hover:bg-gold-soft disabled:opacity-50">
                 {saving ? "Guardando…" : "Guardar"}
               </button>
             </div>
@@ -203,6 +376,18 @@ export default function FlowBuilder() {
         )}
         </div>
       </div>
+
+      {wizard.open && (
+        <FlowWizard
+          initial={wizard.initial}
+          onClose={() => setWizard({ open: false, initial: null })}
+          onSaved={(list) => {
+            setCustom(list);
+            if (!wizard.initial && list.length) setActiveId(list[list.length - 1].id);
+          }}
+        />
+      )}
+      {plantillas && <IceBreakersPanel onClose={() => setPlantillas(false)} />}
     </div>
   );
 }

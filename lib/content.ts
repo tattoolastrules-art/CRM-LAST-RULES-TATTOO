@@ -8,6 +8,8 @@ import { loadJSON, saveJSON } from "./store";
 export interface Tatuador {
   id: string; nombre: string; alias: string; estilos: string[];
   bio: string; fotoUrl: string; instagram: string; activo: boolean;
+  galeria?: string[]; // fotos de sus trabajos (entrenan a la IA para reconocer su estilo)
+  estiloIA?: string; // perfil de estilo destilado por la IA a partir de la galería
 }
 export interface Publicacion {
   id: string; titulo: string; descripcion: string; imagenUrl: string;

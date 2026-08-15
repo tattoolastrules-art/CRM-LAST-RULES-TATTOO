@@ -117,17 +117,20 @@ export default function OmniInbox() {
   useEffect(() => {
     let on = true;
     async function loadReal() {
+      // cada bandeja carga por su lado: si /api/convos falla, los comentarios igual llegan
       try {
         const r = await fetch("/api/convos");
-        if (!r.ok) return;
-        const d = await r.json();
-        if (on) setReal(mapReal(d.convos || []));
+        if (r.ok) {
+          const d = await r.json();
+          if (on) setReal(mapReal(d.convos || []));
+        }
       } catch {}
       try {
         const r = await fetch("/api/comments");
-        if (!r.ok) return;
-        const d = await r.json();
-        if (on) setComments(d.comments || []);
+        if (r.ok) {
+          const d = await r.json();
+          if (on) setComments(d.comments || []);
+        }
       } catch {}
     }
     loadReal();
@@ -172,15 +175,27 @@ export default function OmniInbox() {
     const now = new Date().toISOString();
 
     if (selected.real) {
-      // Envío REAL por WhatsApp
+      // Envío REAL por WhatsApp (optimista: si falla, se retira el mensaje y se restaura el borrador)
       const contacto = selected.id.slice(2);
-      const msg: Message = { id: `m_${Date.now()}`, sender: "maestro", text: text.trim(), at: now };
+      const enviado = text.trim();
+      const msg: Message = { id: `m_${Date.now()}`, sender: "maestro", text: enviado, at: now };
+      const deshacer = () =>
+        setReal((prev) => prev.map((c) => (c.id === selected.id ? { ...c, messages: c.messages.filter((m) => m.id !== msg.id) } : c)));
       setReal((prev) => prev.map((c) => (c.id === selected.id ? { ...c, messages: [...c.messages, msg], lastAt: now } : c)));
       setDraft("");
       setSending(true);
-      fetch("/api/convos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", contacto, text: text.trim() }) })
-        .then(async (r) => { if (!r.ok) alert((await r.json()).error || "No se pudo enviar por WhatsApp"); })
-        .catch(() => alert("Error de conexión"))
+      fetch("/api/convos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", contacto, text: enviado }) })
+        .then(async (r) => {
+          const d = await r.json().catch(() => ({} as { error?: string; convos?: unknown[] }));
+          if (!r.ok) {
+            deshacer();
+            setDraft(enviado);
+            alert(d.error || "No se pudo enviar por WhatsApp");
+          } else if (d.convos) {
+            setReal(mapReal(d.convos as Array<Record<string, unknown>>)); // el estado del servidor manda
+          }
+        })
+        .catch(() => { deshacer(); setDraft(enviado); alert("Error de conexión"); })
         .finally(() => setSending(false));
       return;
     }
@@ -538,13 +553,13 @@ export default function OmniInbox() {
         </div>
 
         {/* Mensajes */}
-        <div className="flex-1 space-y-1.5 overflow-y-auto px-6 py-4">
+        <div className="flex-1 space-y-1.5 overflow-y-auto px-3 py-4 sm:px-6">
           {selected.messages.map((m) => {
             const mine = m.sender !== "coleccionista";
             return (
               <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[68%] rounded-lg px-2.5 py-1.5 text-sm leading-snug shadow ${
+                  className={`max-w-[85%] whitespace-pre-line rounded-lg px-2.5 py-1.5 text-sm leading-snug shadow sm:max-w-[68%] ${
                     mine
                       ? "rounded-tr-none bg-[#005c4b] text-[#e9edef]"
                       : "rounded-tl-none bg-[#202c33] text-[#e9edef]"
@@ -598,7 +613,7 @@ export default function OmniInbox() {
             </div>
           )}
           {tplOpen && (
-            <div className="mb-2 rounded-xl bg-[#0b141a] p-3">
+            <div className="mb-2 max-h-[45dvh] overflow-y-auto rounded-xl bg-[#0b141a] p-3">
               <div className="mb-1 text-sm font-medium text-[#e9edef]">Plantillas de WhatsApp</div>
               <p className="mb-2 text-xs leading-relaxed text-[#8696a0]">
                 WhatsApp solo permite escribir libre durante las <b>24 horas</b> siguientes al último mensaje del

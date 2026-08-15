@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Save, X, Upload, Eye, EyeOff, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, Save, X, Upload, Eye, EyeOff, ImagePlus, Brain } from "lucide-react";
 
 type Coleccion = "tatuadores" | "publicaciones" | "noticias" | "premios";
 type Item = Record<string, unknown>;
@@ -57,6 +57,7 @@ export default function SiteAdmin() {
   const [busy, setBusy] = useState(false);
   const [pub, setPub] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [training, setTraining] = useState(false);
 
   async function publish() {
     setPub("Publicando…");
@@ -70,18 +71,31 @@ export default function SiteAdmin() {
   }
 
   async function load() {
-    const c = await (await fetch("/api/content")).json();
-    setContent(c);
-    setInfo(c.info);
+    try {
+      const r = await fetch("/api/content");
+      if (!r.ok) return; // conserva el estado anterior (una respuesta de error no es contenido)
+      const c = await r.json();
+      setContent(c);
+      setInfo(c.info);
+    } catch { /* sin conexión: se reintenta en la próxima acción */ }
   }
   useEffect(() => { load(); }, []);
 
-  async function post(body: unknown) {
+  async function post(body: unknown): Promise<boolean> {
     setBusy(true);
     try {
-      const c = await (await fetch("/api/content", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();
+      const r = await fetch("/api/content", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const c = await r.json();
+      if (!r.ok) {
+        alert(c.error || "No se pudo guardar");
+        return false;
+      }
       setContent(c);
       setInfo(c.info);
+      return true;
+    } catch {
+      alert("Error de conexión");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -132,6 +146,63 @@ export default function SiteAdmin() {
     }
   }
 
+  // Galería del tatuador: fotos de sus trabajos con las que la IA aprende su estilo
+  async function handleGaleriaFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !editing) return;
+    setUploading(true);
+    try {
+      const nuevas: string[] = [];
+      for (const file of files.slice(0, 6)) {
+        const blob = await resizeImage(file);
+        const fd = new FormData();
+        fd.append("file", blob, (file.name.replace(/\.[^.]+$/, "") || "obra") + ".jpg");
+        fd.append("type", "tatuadores");
+        const r = await fetch("/api/upload", { method: "POST", body: fd });
+        const d = await r.json();
+        if (r.ok && d.path) nuevas.push(d.path);
+        else alert(d.error || "Error subiendo una foto");
+      }
+      if (nuevas.length) {
+        setEditing((prev) => {
+          if (!prev) return prev;
+          const galeria = [...((prev.galeria as string[]) || []), ...nuevas].slice(0, 12);
+          return { ...prev, galeria };
+        });
+      }
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function entrenarIA() {
+    if (!editing?.id || training) return;
+    setTraining(true);
+    try {
+      // guarda primero (para que la galería recién subida quede en el tatuador)
+      const item: Item = { ...editing };
+      item.estilos = String(item.estilos || "").split(",").map((s) => s.trim()).filter(Boolean);
+      if (!(await post({ action: "upsert", type: "tatuadores", item }))) return;
+      const r = await fetch("/api/tatuadores/entrenar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editing.id }),
+      });
+      const d = await r.json();
+      if (!r.ok) alert(d.error || "No se pudo entrenar a la IA");
+      else {
+        setEditing((prev) => (prev ? { ...prev, estiloIA: d.estiloIA } : prev));
+        if (d.content) { setContent(d.content); setInfo(d.content.info); }
+        alert(`🧠 Listo: la IA aprendió el estilo con ${d.fotosAnalizadas} fotos. Ana ya lo usa en los chats.`);
+      }
+    } catch {
+      alert("Error de conexión al entrenar");
+    } finally {
+      setTraining(false);
+    }
+  }
+
   async function handlePortadaFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -158,10 +229,11 @@ export default function SiteAdmin() {
   const subOf = (it: Item) =>
     tab === "tatuadores" ? (it.estilos as string[])?.join(", ")
       : tab === "publicaciones" ? `${it.tatuador} · ${it.fecha}`
+      : tab === "premios" ? [it.evento, it.anio].filter(Boolean).join(" · ")
       : (it.fecha as string);
-  const flag = (it: Item) =>
-    tab === "tatuadores" ? !!it.activo : tab === "publicaciones" ? !!it.destacado : !!it.publicada;
-  const flagLabel = tab === "tatuadores" ? "Visible" : tab === "publicaciones" ? "Destacada" : "Publicada";
+  const flag = (it: Item) => (tab === "info" ? false : !!it[FLAGFIELD[tab as Coleccion]]);
+  const flagLabel =
+    tab === "tatuadores" || tab === "premios" ? "Visible" : tab === "publicaciones" ? "Destacada" : "Publicada";
 
   return (
     <div className="flex h-full flex-col p-5">
@@ -199,6 +271,26 @@ export default function SiteAdmin() {
       <div className="grid flex-1 gap-4 overflow-hidden lg:grid-cols-[1fr_360px]">
         {/* Lista */}
         <div className="glass overflow-auto rounded-xl p-3">
+          {tab === "tatuadores" && (() => {
+            const sinFotos = list.filter((t) => ((t.galeria as string[]) || []).length < 2);
+            const sinIA = list.filter((t) => ((t.galeria as string[]) || []).length >= 2 && !t.estiloIA);
+            if (!sinFotos.length && !sinIA.length) return null;
+            return (
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-gold/30 bg-gold/8 px-3 py-2 text-[11.5px] leading-relaxed text-gold-soft">
+                <Brain size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  La IA aprende el estilo de cada tatuador con sus fotos: pídele a <b>Alejandro</b> subir 3–6 trabajos
+                  por artista y dale “Entrenar IA”. Así Ana reconoce estilos y recomienda al artista ideal en los chats.
+                  {sinFotos.length > 0 && (
+                    <> · <b>Faltan fotos:</b> {sinFotos.map((t) => t.alias || t.nombre).join(", ")}</>
+                  )}
+                  {sinIA.length > 0 && (
+                    <> · <b>Falta entrenar:</b> {sinIA.map((t) => t.alias || t.nombre).join(", ")}</>
+                  )}
+                </span>
+              </div>
+            );
+          })()}
           {tab === "info" ? (
             <div className="space-y-3">
               {INFO_FIELDS.map(([k, label]) => (
@@ -230,7 +322,12 @@ export default function SiteAdmin() {
               {list.map((it) => (
                 <div key={it.id as string} className="flex items-center gap-3 rounded-lg border border-line/60 bg-navy-soft px-3 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-bone">{titleOf(it)}</div>
+                    <div className="flex items-center gap-1.5 truncate text-sm font-medium text-bone">
+                      <span className="truncate">{titleOf(it)}</span>
+                      {tab === "tatuadores" && !!it.estiloIA && (
+                        <span title="La IA ya aprendió su estilo" className="shrink-0 rounded bg-[#37C7C0]/15 px-1 py-0.5 text-[9px] font-bold text-[#37C7C0]">🧠 IA</span>
+                      )}
+                    </div>
                     <div className="truncate text-[11px] text-bone-dim">{subOf(it)}</div>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-[10px] ${flag(it) ? "bg-[#3FB37F]/15 text-[#3FB37F]" : "bg-line/40 text-bone-dim"}`}>
@@ -263,6 +360,53 @@ export default function SiteAdmin() {
                   <div className="mt-1 truncate text-[10px] text-bone-dim">📎 {String(editing[IMGFIELD[tab as Coleccion]])}</div>
                 ) : null}
               </div>
+
+              {/* Galería de trabajos → entrena a la IA con el estilo del tatuador */}
+              {tab === "tatuadores" && (
+                <div className="rounded-lg border border-[#37C7C0]/30 bg-[#37C7C0]/5 p-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold text-[#37C7C0]">
+                    <Brain size={14} /> Estilo del tatuador (IA)
+                  </div>
+                  <p className="mb-2 text-[11px] leading-relaxed text-bone-dim">
+                    Sube 3–6 fotos de SUS trabajos y dale “Entrenar IA”: Ana aprende su estilo y lo recomienda
+                    cuando la idea de un cliente encaja con él.
+                  </p>
+                  <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#37C7C0]/40 px-3 py-2 text-sm text-[#37C7C0] hover:bg-[#37C7C0]/10">
+                    <ImagePlus size={15} /> {uploading ? "Subiendo…" : "Subir fotos de sus trabajos"}
+                    <input type="file" accept="image/*" multiple onChange={handleGaleriaFiles} className="hidden" />
+                  </label>
+                  {((editing.galeria as string[]) || []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {((editing.galeria as string[]) || []).map((g, i) => (
+                        <span key={g + i} className="flex items-center gap-1 rounded bg-navy-soft px-1.5 py-0.5 text-[10px] text-bone-dim">
+                          📎 …{g.slice(-18)}
+                          <button
+                            onClick={() => setEditing((prev) => (prev ? { ...prev, galeria: ((prev.galeria as string[]) || []).filter((_, j) => j !== i) } : prev))}
+                            className="text-bone-dim hover:text-red-400"
+                            aria-label="Quitar foto"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={entrenarIA}
+                    disabled={training || !editing.id || ((editing.galeria as string[]) || []).length < 2}
+                    title={!editing.id ? "Guarda primero el tatuador" : ((editing.galeria as string[]) || []).length < 2 ? "Sube al menos 2 fotos" : "Analizar sus fotos y aprender su estilo"}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#37C7C0] px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-110 disabled:opacity-40"
+                  >
+                    <Brain size={15} /> {training ? "La IA está mirando las fotos…" : editing.estiloIA ? "Reentrenar IA" : "Entrenar IA"}
+                  </button>
+                  {!!editing.estiloIA && (
+                    <div className="mt-2 rounded-lg border border-line/60 bg-navy px-2.5 py-2 text-[11px] leading-relaxed text-bone-dim">
+                      <span className="font-semibold text-[#37C7C0]">Lo que la IA aprendió:</span> {String(editing.estiloIA)}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {FIELDS[tab as Coleccion].map(([k, label, type]) => (
                 <label key={k} className="block">
                   <span className="text-[11px] text-bone-dim">{label}</span>

@@ -1,16 +1,29 @@
 // NOVA: decide la respuesta automática a un mensaje entrante.
 // Regla de costo: saludos/mensajes triviales → respuesta PREDEFINIDA (sin tokens);
 // conversación real → Claude con la voz comercial de Ana.
+// Ana recibe el HISTORIAL reciente del chat (memoria) para perfilar al cliente
+// sin repetir preguntas, y CONOCE a los tatuadores del estudio y sus estilos.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystemPrompt } from "./lana-prompt";
 import { matchFlow, flowText, styleGuide } from "./flow-engine";
+import { artistsBlock } from "./artists-ai";
 import { getFollowConfig } from "./followups";
+
+// Un turno del historial de conversación (memoria de Ana)
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
 
 const RATING = /^\s*([1-5])\s*(estrellas?|⭐+)?\s*$/i;
 
 const GREETING =
   /^(hola+|buenas+|buenos dias|buenas tardes|buenas noches|hey|holi+|hello|hi|info|informacion|información|precio|leido|leído|ok|listo)[\s!.,?¡¿]*$/i;
+
+export function isGreeting(t: string): boolean {
+  return GREETING.test((t || "").trim());
+}
 
 // Bienvenidas humanas (se rota una al azar para no sonar robótico)
 const WELCOMES = [
@@ -27,7 +40,7 @@ export function randomWelcome() {
 const TYPE_REPLIES: Record<string, string[]> = {
   sticker: [
     "Jaja buenísimo 🖤 Bueno, cuéntame… ¿qué idea traes en mente para tu piel?",
-    "Me encantó jaja 🤍 Y dime, ¿ya tienes pensada tu próxima tatuaje?",
+    "Me encantó jaja 🤍 Y dime, ¿ya tienes pensado tu próximo tatuaje?",
   ],
   audio: [
     "¡Te escuché! Dame un momento… mientras tanto, ¿me resumes la idea en texto? Así se la paso exacta a los tatuadores 🖤",
@@ -64,6 +77,20 @@ export function typeReply(type: string): string | null {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// El primer turno debe ser del cliente y sin turnos seguidos del mismo rol
+function normalizeTurns(turns: ChatTurn[]): ChatTurn[] {
+  const out: ChatTurn[] = [];
+  for (const t of turns) {
+    const content = (t.content || "").trim();
+    if (!content) continue;
+    if (!out.length && t.role !== "user") continue;
+    const last = out[out.length - 1];
+    if (last && last.role === t.role) last.content += "\n" + content;
+    else out.push({ role: t.role, content });
+  }
+  return out;
+}
+
 // Visión: Ana MIRA la imagen de referencia y responde sobre ella
 export async function anovaVision(
   b64: string,
@@ -74,9 +101,11 @@ export async function anovaVision(
   if (!process.env.ANTHROPIC_API_KEY) return null;
   try {
     const client = new Anthropic();
+    const artistas = await artistsBlock().catch(() => "");
     const system =
       buildSystemPrompt() +
-      "\n\nEl cliente acaba de enviarte una IMAGEN por WhatsApp (probablemente una referencia de tatuaje). Mira la imagen, coméntala breve y con criterio de asesora de arte (qué es, qué estilo se le ve), y avanza: pregunta zona del cuerpo o tamaño. Responde ÚNICAMENTE con el mensaje (2-4 frases).";
+      (artistas ? "\n\n" + artistas : "") +
+      "\n\nEl cliente acaba de enviarte una IMAGEN (probablemente una referencia de tatuaje). Mira la imagen, coméntala breve y con criterio de asesora de arte (qué es, qué estilo se le ve). Si el estilo encaja con el de un tatuador del estudio, menciónalo con naturalidad (ej: “ese dark work es justo lo que maneja el equipo”). Luego avanza: pregunta zona del cuerpo o tamaño. Responde ÚNICAMENTE con el mensaje (2-4 frases).";
     const r = await client.messages.create({
       model: process.env.LANA_MODEL || "claude-haiku-4-5",
       max_tokens: 300,
@@ -105,11 +134,19 @@ export async function anovaVision(
 export async function anovaReply(
   text: string,
   name: string,
+  history?: ChatTurn[],
+  canal?: "whatsapp" | "instagram" | "facebook",
 ): Promise<{ reply: string; mode: "predefinida" | "anova" }> {
   const t = (text || "").trim();
+  // ¿Ya venían conversando? (el historial incluye el mensaje actual)
+  const yaHablaron = (history?.length ?? 0) > 1;
+  const lastAna = [...(history || [])].reverse().find((h) => h.role === "assistant")?.content || "";
 
   // Respuesta a la encuesta de satisfacción (1–5): los felices van a Google ⭐
-  const rm = t.match(RATING);
+  // SOLO si la encuesta fue lo último que Ana envió (o escriben "5 estrellas"):
+  // un "2" suelto puede ser la respuesta al menú numerado de un flujo.
+  const esEncuesta = /estrellas?|⭐/i.test(t) || /del?\s*1\s*al?\s*5|califica|⭐/i.test(lastAna);
+  const rm = esEncuesta ? t.match(RATING) : null;
   if (rm) {
     const n = parseInt(rm[1], 10);
     const link = (await getFollowConfig().catch(() => null))?.reviewLink || "";
@@ -125,29 +162,37 @@ export async function anovaReply(
     };
   }
 
-  if (!t || t.length < 2 || GREETING.test(t) || t.startsWith("[")) {
+  if (!t || t.length < 2 || t.startsWith("[") || (GREETING.test(t) && !yaHablaron)) {
     // Bienvenida: usa el saludo del flujo F1 (editable desde el OS) si existe
     const w = await flowText("f1", "m1").catch(() => "");
     return { reply: w || randomWelcome(), mode: "predefinida" };
   }
 
   // ¿El mensaje dispara un flujo? → respuesta del flujo (editable, sin tokens)
-  const flowReply = await matchFlow(t).catch(() => null);
+  const flowReply = await matchFlow(t, lastAna, canal).catch(() => null);
   if (flowReply) return { reply: flowReply, mode: "predefinida" };
 
   if (!process.env.ANTHROPIC_API_KEY) return { reply: randomWelcome(), mode: "predefinida" };
 
   const guide = await styleGuide().catch(() => "");
+  const artistas = await artistsBlock().catch(() => "");
   const client = new Anthropic();
   const system =
     buildSystemPrompt() +
-    "\n\nEstás respondiendo por WhatsApp. Responde ÚNICAMENTE con el mensaje para el cliente: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda." +
+    (artistas ? "\n\n" + artistas : "") +
+    "\n\nEstás respondiendo un chat del estudio. Tienes el historial reciente: úsalo para NO repetir preguntas ya respondidas y para avanzar el perfilamiento (idea → zona → tamaño → primera vez → disponibilidad). Responde ÚNICAMENTE con el mensaje para el cliente: breve (2-4 frases), cálido y comercial, siempre acercando al cierre o a la agenda." +
+    (name ? `\nEl cliente se llama ${name}.` : "") +
     (guide ? "\n\nMENSAJES APROBADOS DEL ESTUDIO (síguelos como guía de tono y contenido):\n" + guide : "");
+
+  const turns = normalizeTurns(history?.length ? history : [{ role: "user", content: t }]);
+  const last = turns[turns.length - 1];
+  if (!last || last.role !== "user") turns.push({ role: "user", content: t });
+
   const r = await client.messages.create({
     model: process.env.LANA_MODEL || "claude-haiku-4-5",
     max_tokens: 300,
     system,
-    messages: [{ role: "user", content: `Mensaje de ${name || "un cliente"}: ${t}` }],
+    messages: turns,
   });
   const reply = r.content
     .filter((b) => b.type === "text")

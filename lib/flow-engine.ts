@@ -4,9 +4,11 @@
 //   texto del flujo (predefinido, editable, SIN gastar tokens).
 // - styleGuide: los mensajes clave (con las ediciones de Alejandro) se inyectan
 //   al prompt de Ana para que la IA hable igual que los flujos aprobados.
+// - Los flujos PERSONALIZADOS (asistente "Crear flujo") también disparan aquí.
 
 import { FLOWS } from "./flows";
 import { getFlowOverrides } from "./flow-overrides";
+import { getCustomFlows } from "./custom-flows";
 
 export async function flowText(flowId: string, nodeId: string): Promise<string> {
   const ov = await getFlowOverrides();
@@ -27,9 +29,59 @@ const RULES: { re: RegExp; flow: string; node: string }[] = [
   { re: /(abono|reservar|agendar|cita|apartar\s+cupo)/i, flow: "f5", node: "m2" },
 ];
 
-export async function matchFlow(text: string): Promise<string | null> {
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export type Canal = "whatsapp" | "instagram" | "facebook";
+
+// Flujos personalizados: disparador por palabra clave y respuesta a sus opciones.
+// lastAna = el último mensaje que envió Ana: responder una opción (por número o
+// por texto) solo cuenta si el menú de ESE flujo fue lo último que se mostró —
+// sin ese contexto, una etiqueta como "precio" secuestraría cualquier chat.
+// canal = por dónde escribe el cliente (respeta el "Solo WhatsApp/IG" del asistente).
+async function matchCustom(text: string, lastAna: string, canal?: Canal): Promise<string | null> {
+  const flows = (await getCustomFlows().catch(() => []))
+    .filter((f) => f.active && (f.channel === "all" || !canal || f.channel === canal));
+  if (!flows.length) return null;
+  const t = text.toLowerCase();
+
+  // ¿Respondió una de las opciones del menú que Ana acaba de mostrar?
+  for (const f of flows) {
+    const menuVisible = f.options.some((o) => lastAna.includes(o.label));
+    if (!menuVisible) continue;
+    for (let i = 0; i < f.options.length; i++) {
+      const o = f.options[i];
+      const porNumero = new RegExp(`^\\s*${i + 1}\\s*[).:]?\\s*$`).test(text);
+      const porTexto = o.label.length >= 3 && t.includes(o.label.toLowerCase());
+      if (porNumero || porTexto) {
+        return o.reply + (f.closing ? "\n\n" + f.closing : "");
+      }
+    }
+  }
+
+  // ¿Disparó un flujo por palabra clave? → mensaje inicial (+ menú de opciones)
+  // Frontera Unicode: \W trata á/ñ como separador y haría matches falsos.
+  for (const f of flows) {
+    const hit = f.keywords.some(
+      (k) => k.length >= 3 && new RegExp(`(^|[^\\p{L}\\p{N}_])${escapeRe(k.toLowerCase())}`, "iu").test(t),
+    );
+    if (hit && f.welcome) {
+      const menu = f.options.length
+        ? "\n\n" + f.options.map((o, i) => `${i + 1}. ${o.label}`).join("\n")
+        : "";
+      return f.welcome + menu;
+    }
+  }
+  return null;
+}
+
+export async function matchFlow(text: string, lastAna = "", canal?: Canal): Promise<string | null> {
   const t = (text || "").trim();
   if (!t) return null;
+
+  // Primero los flujos creados por el estudio (más específicos que los genéricos)
+  const custom = await matchCustom(t, lastAna, canal).catch(() => null);
+  if (custom) return custom;
+
   for (const r of RULES) {
     if (r.re.test(t)) {
       const reply = await flowText(r.flow, r.node);

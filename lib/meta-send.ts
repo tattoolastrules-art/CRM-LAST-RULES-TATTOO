@@ -22,10 +22,14 @@ async function pageToken(): Promise<string> {
       cachedPageToken = d.access_token;
       return d.access_token;
     }
+    if (r.status >= 400 && r.status < 500) {
+      // respuesta definitiva del Graph (sin permiso de derivar): el del entorno es lo que hay
+      cachedPageToken = envTok;
+    }
+    // 5xx / respuesta rara: NO cachear, reintentar el intercambio en la próxima llamada
   } catch {
-    /* seguimos con el del entorno */
+    /* fallo de red transitorio: NO cachear el fallback */
   }
-  cachedPageToken = envTok;
   return envTok;
 }
 
@@ -41,6 +45,36 @@ export async function sendMetaDM(recipientId: string, text: string): Promise<voi
     }),
   });
   if (!r.ok) throw new Error("Meta send: " + (await r.text()).slice(0, 300));
+}
+
+// Publica los "ice breakers" (preguntas listas al abrir el chat) en Instagram o
+// Messenger vía messenger_profile. Se ven al iniciar una conversación nueva y
+// el toque llega al webhook como postback con su payload.
+export async function setIceBreakers(
+  platform: "instagram" | "messenger",
+  items: { question: string; payload: string }[],
+): Promise<void> {
+  const token = await pageToken();
+  const url =
+    `${GRAPH}/me/messenger_profile?access_token=${encodeURIComponent(token)}` +
+    (platform === "instagram" ? "&platform=instagram" : "");
+  const body = items.length
+    ? {
+        ice_breakers: [
+          {
+            locale: "default",
+            call_to_actions: items.slice(0, 4).map((i) => ({
+              question: i.question.slice(0, 80),
+              payload: i.payload.slice(0, 1000),
+            })),
+          },
+        ],
+      }
+    : null;
+  const r = body
+    ? await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    : await fetch(url, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fields: ["ice_breakers"] }) });
+  if (!r.ok) throw new Error("ice breakers " + platform + ": " + (await r.text()).slice(0, 300));
 }
 
 // Private Reply oficial de Meta: manda un DM al autor de un comentario

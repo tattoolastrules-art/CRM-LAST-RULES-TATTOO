@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
-import { anovaReply, anovaVision, typeReply } from "@/lib/anova";
-import { waConfigured, sendWhatsAppText, fetchMediaBase64 } from "@/lib/whatsapp";
+import { anovaReply, anovaVision, typeReply, isGreeting, type ChatTurn } from "@/lib/anova";
+import { waConfigured, sendWhatsAppText, sendWhatsAppButtons, fetchMediaBase64 } from "@/lib/whatsapp";
+import { getIceBreakers, findIceBreakerAnswer, ibPayload } from "@/lib/ice-breakers";
 import { fbConfigured, sendMetaDM, fetchMetaName, fetchUrlBase64, replyComment, sendPrivateReply } from "@/lib/meta-send";
 import { addComment, patchComment } from "@/lib/comments";
 import { saveJSON } from "@/lib/store";
@@ -15,7 +16,7 @@ function logFail(donde: string, e: unknown) {
 // Ids propios (página FB e IG del estudio): sus comentarios/respuestas no se registran (anti-bucle)
 const OWN_IDS = new Set(["797899886739979", "17841466188660965"]);
 import { getSettings, saveSettings } from "@/lib/settings";
-import { addConvoMsg } from "@/lib/convos";
+import { addConvoMsg, getConvos } from "@/lib/convos";
 import { pushAll } from "@/lib/push";
 import { notifyStudio } from "@/lib/notify";
 
@@ -30,16 +31,17 @@ const PUB_GRACIAS = [
   "🖤🖤",
   "¡Gracias! 🖤",
   "¡Mil gracias! Aquí te esperamos 🖤",
-  "Se viene más 🔥🖤",
+  "Se viene más ✨🖤",
 ];
 const PUB_INTERES = [
   "¡Hola! Te escribimos por DM 🖤 revisa tus mensajes",
   "Te mandamos la info por interno 🖤",
   "¡Claro que sí! Te escribimos al DM 🖤",
 ];
+// OJO: sin prometer precios — Ana no cotiza (regla dura del estudio)
 const DM_COMENTARIO = [
-  "¡Hola! Vimos tu comentario 🖤 Soy Ana, del estudio Last Rules. Cuéntame: ¿qué tatuaje tienes en mente? Te paso precios y agenda sin compromiso.",
-  "¡Hola! Soy Ana, de Last Rules Tattoo 🖤 Vi tu comentario y te escribo de una. ¿Qué idea tienes? Así te cuento valores y disponibilidad.",
+  "¡Hola! Vimos tu comentario 🖤 Soy Ana, del estudio Last Rules. Cuéntame: ¿qué tatuaje tienes en mente? Te explico cómo funciona la cotización a tu medida y te paso agenda sin compromiso.",
+  "¡Hola! Soy Ana, de Last Rules Tattoo 🖤 Vi tu comentario y te escribo de una. ¿Qué idea tienes? Un tatuador te la cotiza a la medida y yo te cuento disponibilidad ✨",
 ];
 const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -83,7 +85,7 @@ interface WaMessage {
   location?: { latitude?: number; longitude?: number; name?: string };
   reaction?: { emoji?: string };
   button?: { text?: string };
-  interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
+  interactive?: { button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string } };
 }
 interface MetaAttachment {
   type?: string;
@@ -92,10 +94,24 @@ interface MetaAttachment {
 interface Messaging {
   sender?: { id?: string };
   message?: { text?: string; is_echo?: boolean; attachments?: MetaAttachment[] };
-  postback?: { title?: string };
+  postback?: { title?: string; payload?: string };
 }
 interface Change { field?: string; value?: Record<string, unknown> }
 interface Entry { changes?: Change[]; messaging?: Messaging[] }
+
+// Firma de cada entrega (X-Hub-Signature-256 = HMAC-SHA256 del body con el app
+// secret). Sin META_APP_SECRET configurado no se puede verificar y se acepta
+// (compatibilidad); con el secreto puesto, todo body sin firma válida se rechaza
+// — evita que un tercero inyecte mensajes falsos o fuerce el código de admin.
+function firmaValida(raw: string, sig: string | null): boolean {
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) return true;
+  if (!sig || !sig.startsWith("sha256=")) return false;
+  const esperado = crypto.createHmac("sha256", secret).update(raw, "utf8").digest("hex");
+  const a = Buffer.from(esperado, "hex");
+  const b = Buffer.from(sig.slice(7), "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 // Verificación del webhook (Meta hace un GET con hub.challenge)
 export async function GET(req: Request) {
@@ -110,7 +126,7 @@ export async function GET(req: Request) {
 }
 
 // Identifica el tipo de mensaje de WhatsApp y arma su descripción para el CRM
-function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: string; caption?: string; texto?: string } {
+function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: string; caption?: string; texto?: string; ibId?: string } {
   const t = m.type || "text";
   switch (t) {
     case "text":
@@ -135,40 +151,49 @@ function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: st
       return { label: m.button?.text || "[botón]", waType: "text", texto: m.button?.text || "" };
     case "interactive": {
       const title = m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || "[interacción]";
-      return { label: title, waType: "text", texto: title };
+      const ibId = m.interactive?.button_reply?.id || m.interactive?.list_reply?.id;
+      return { label: title, waType: "text", texto: title, ibId };
     }
     default:
       return { label: "[" + t + "]", waType: t };
   }
 }
 
-// De un evento de Meta saca un lead (WhatsApp / Instagram / Facebook)
-function extractLead(object: string, entry: Entry | null):
-  | (Record<string, unknown> & { waType?: string; mediaId?: string; caption?: string; texto?: string; kind?: "dm" | "comment" })
-  | null {
-  if (!entry) return null;
+type Lead = Record<string, unknown> & {
+  waType?: string; mediaId?: string; caption?: string; texto?: string; ibId?: string; kind?: "dm" | "comment";
+};
 
-  // WhatsApp: mensaje entrante (cualquier tipo)
+// De un evento de Meta saca los leads (WhatsApp / Instagram / Facebook).
+// Meta AGRUPA notificaciones (varios changes/messages/messaging por entry, p. ej.
+// tras reintentos o cuando el cliente escribe seguido): se procesan TODOS.
+function extractLeads(object: string, entry: Entry | null): Lead[] {
+  if (!entry) return [];
+  const out: Lead[] = [];
+
+  // WhatsApp: mensajes entrantes (cualquier tipo)
   if (object === "whatsapp_business_account") {
-    const value = entry.changes?.[0]?.value as
-      | { messages?: WaMessage[]; contacts?: { profile?: { name?: string } }[] }
-      | undefined;
-    const m = value?.messages?.[0];
-    if (m && m.from) {
-      const d = describeWa(m);
-      return {
-        nombre: value?.contacts?.[0]?.profile?.name || m.from,
-        contacto: m.from,
-        servicio: "WhatsApp",
-        idea: d.label || "[mensaje]",
-        origen: "whatsapp",
-        waType: d.waType,
-        mediaId: d.mediaId,
-        caption: d.caption,
-        texto: d.texto,
-      };
+    for (const ch of entry.changes || []) {
+      const value = ch?.value as
+        | { messages?: WaMessage[]; contacts?: { profile?: { name?: string } }[] }
+        | undefined;
+      for (const m of value?.messages || []) {
+        if (!m?.from) continue;
+        const d = describeWa(m);
+        out.push({
+          nombre: value?.contacts?.[0]?.profile?.name || m.from,
+          contacto: m.from,
+          servicio: "WhatsApp",
+          idea: d.label || "[mensaje]",
+          origen: "whatsapp",
+          waType: d.waType,
+          mediaId: d.mediaId,
+          caption: d.caption,
+          texto: d.texto,
+          ibId: d.ibId,
+        });
+      }
     }
-    return null;
+    return out;
   }
 
   const plat = object === "instagram" ? "Instagram" : "Facebook";
@@ -176,32 +201,34 @@ function extractLead(object: string, entry: Entry | null):
   // DM (Instagram / Messenger): texto, adjuntos (foto, sticker, audio, video,
   // archivo, ubicación, compartidos, menciones en historias) o postback de botón.
   // Los ecos de lo que enviamos nosotros se ignoran.
-  const dm = entry.messaging?.[0];
-  if (dm && !dm.message?.is_echo && (dm.message?.text || dm.message?.attachments?.length || dm.postback?.title)) {
-    const d = describeMeta(dm);
-    return {
-      nombre: plat + " (DM)", contacto: dm.sender?.id || "", servicio: plat + " · DM",
-      idea: d.label, origen: object, kind: "dm", waType: d.type, texto: d.texto, metaImg: d.img,
-    };
+  for (const dm of entry.messaging || []) {
+    if (dm && !dm.message?.is_echo && (dm.message?.text || dm.message?.attachments?.length || dm.postback?.title)) {
+      const d = describeMeta(dm);
+      out.push({
+        nombre: plat + " (DM)", contacto: dm.sender?.id || "", servicio: plat + " · DM",
+        idea: d.label, origen: object, kind: "dm", waType: d.type, texto: d.texto, metaImg: d.img,
+        ibId: dm.postback?.payload,
+      });
+    }
   }
 
-  // Comentario (Instagram comments / Facebook feed)
-  const ch = entry.changes?.[0];
-  if (ch && (ch.field === "comments" || ch.field === "feed")) {
+  // Comentarios (Instagram comments / Facebook feed)
+  for (const ch of entry.changes || []) {
+    if (!ch || (ch.field !== "comments" && ch.field !== "feed")) continue;
     const v = ch.value || {};
-    if (ch.field === "feed" && v.item && v.item !== "comment") return null; // solo comentarios
+    if (ch.field === "feed" && v.item && v.item !== "comment") continue; // solo comentarios
     const from = v.from as { name?: string; username?: string; id?: string } | undefined;
-    if (from?.id && OWN_IDS.has(from.id)) return null; // nuestras propias respuestas no cuentan
+    if (from?.id && OWN_IDS.has(from.id)) continue; // nuestras propias respuestas no cuentan
     const text = (v.text as string) || (v.message as string) || "[comentario]";
     const commentId = (v.comment_id as string) || ((v.id && ch.field === "comments" ? v.id : "") as string);
     const postId = ((v.media as { id?: string })?.id || v.post_id || "") as string;
-    return {
+    out.push({
       nombre: from?.name || from?.username || plat + " (comentario)", contacto: from?.id || from?.username || "",
       servicio: "Comentario " + plat, idea: text, origen: object, kind: "comment", commentId, postId,
-    };
+    });
   }
 
-  return null;
+  return out;
 }
 
 // Identifica el tipo de mensaje de Instagram/Messenger (equivalente a describeWa)
@@ -238,6 +265,8 @@ function describeMeta(dm: Messaging): { label: string; type: string; img?: strin
 async function replyFor(
   lead: { waType?: string; mediaId?: string; caption?: string; texto?: string; idea?: unknown; nombre?: unknown },
   media: { b64: string; mime: string } | null,
+  history?: ChatTurn[],
+  canal?: "whatsapp" | "instagram" | "facebook",
 ): Promise<string | null> {
   const type = lead.waType || "text";
 
@@ -255,13 +284,30 @@ async function replyFor(
   const predef = typeReply(type);
   if (predef) return predef; // sticker, audio, video, documento, ubicación, contacto
 
-  const { reply } = await anovaReply(String(lead.texto ?? lead.idea ?? ""), String(lead.nombre || ""));
+  const { reply } = await anovaReply(String(lead.texto ?? lead.idea ?? ""), String(lead.nombre || ""), history, canal);
   return reply;
+}
+
+// Historial reciente del chat (para que Ana recuerde lo ya hablado y no repita preguntas)
+async function chatHistory(contacto: string): Promise<ChatTurn[]> {
+  const convo = (await getConvos().catch(() => [])).find((c) => c.id === contacto);
+  if (!convo) return [];
+  return convo.messages
+    .filter((m) => m.text)
+    .slice(-12)
+    .map((m) => ({
+      role: m.sender === "coleccionista" ? ("user" as const) : ("assistant" as const),
+      content: m.text,
+    }));
 }
 
 // Recepción de eventos
 export async function POST(req: Request) {
   const raw = await req.text();
+  if (!firmaValida(raw, req.headers.get("x-hub-signature-256"))) {
+    logFail("firma", "X-Hub-Signature-256 inválida o ausente");
+    return new Response("Invalid signature", { status: 401 });
+  }
   const body = ((): Record<string, unknown> => {
     try { return JSON.parse(raw) as Record<string, unknown>; } catch { return {}; }
   })();
@@ -278,8 +324,24 @@ export async function POST(req: Request) {
       : object;
     await addMetaEvent({ id: crypto.randomBytes(4).toString("hex"), at: new Date().toISOString(), object, summary, raw: body });
 
-    const lead = extractLead(object, entry);
-    if (lead) {
+    // Puede venir más de un entry y más de un mensaje por entry (agrupados)
+    const entries = Array.isArray(body.entry) ? (body.entry as Entry[]) : [];
+    for (const en of entries) {
+      for (const lead of extractLeads(object, en)) {
+        await procesarLead(lead);
+      }
+    }
+  } catch {
+    /* nunca fallar el 200: Meta reintenta si no respondemos rápido */
+  }
+
+  return new Response("EVENT_RECEIVED", { status: 200 });
+}
+
+// Procesa UN lead/mensaje (el POST puede traer varios agrupados)
+async function procesarLead(lead: Lead): Promise<void> {
+  {
+    {
       if (lead.origen === "whatsapp") {
         // ── Modo administrador (código 280… → rutas del panel, cero tokens) ──
         const from = String(lead.contacto);
@@ -299,16 +361,19 @@ export async function POST(req: Request) {
           await responderAdmin(
             "✅ Código correcto. Este número quedó como ADMINISTRADOR del sistema:\n• Aquí llegarán los avisos del estudio (reservas web, citas, posibles abonos, chats por vencerse).\n• Escríbeme una palabra (citas, chats, sitio…) y te paso la ruta exacta del panel.\n\n👉 Panel: https://app.lastrulestattoo.com/os",
           );
-          return new Response("EVENT_RECEIVED", { status: 200 });
+          return;
         }
         if (cfg0.adminPhones.includes(from)) {
           await responderAdmin(adminRoute(waTexto));
-          return new Response("EVENT_RECEIVED", { status: 200 });
+          return;
         }
         if (ADMIN_ASK_RE.test(waTexto)) {
           await responderAdmin("¡Hola! Claro 🖤 Por seguridad, envíame el código de administrador (solo el número) y activo todo con este WhatsApp.");
-          return new Response("EVENT_RECEIVED", { status: 200 });
+          return;
         }
+
+        // ¿Es un contacto nuevo? (antes de registrar su mensaje) → bienvenida con botones
+        const esNuevo = !(await getConvos().catch(() => [])).some((c) => c.id === from);
 
         await upsertLeadByContact(lead);
 
@@ -342,10 +407,23 @@ export async function POST(req: Request) {
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
-            const reply = await replyFor(lead, media);
-            if (reply) {
-              await sendWhatsAppText(String(lead.contacto), reply);
-              await addConvoMsg(String(lead.contacto), "", "ana", reply);
+            const ibCfg = await getIceBreakers();
+            const ib = findIceBreakerAnswer(ibCfg, String(lead.ibId || ""), texto);
+            if (ib) {
+              // Tocó un botón de plantilla → respuesta predefinida (cero tokens)
+              await sendWhatsAppText(from, ib);
+              await addConvoMsg(from, "", "ana", ib);
+            } else if (esNuevo && (lead.waType || "text") === "text" && isGreeting(texto) && ibCfg.whatsapp.length) {
+              // Contacto nuevo que saluda → bienvenida con las plantillas listas (botones)
+              const botones = ibCfg.whatsapp.map((x, i) => ({ id: ibPayload("whatsapp", i), title: x.q }));
+              await sendWhatsAppButtons(from, ibCfg.waWelcome, botones);
+              await addConvoMsg(from, "", "ana", ibCfg.waWelcome + "\n" + botones.map((b) => "▢ " + b.title).join("\n"));
+            } else {
+              const reply = await replyFor(lead, media, await chatHistory(from), "whatsapp");
+              if (reply) {
+                await sendWhatsAppText(from, reply);
+                await addConvoMsg(from, "", "ana", reply);
+              }
             }
           } catch {
             /* si falla el envío no rompemos la recepción */
@@ -367,15 +445,18 @@ export async function POST(req: Request) {
         if (fbConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
             const type = String(lead.waType || "text");
+            const ibCfg = await getIceBreakers();
+            const ib = findIceBreakerAnswer(ibCfg, String(lead.ibId || ""), String(lead.texto || ""));
             let reply: string | null = null;
-            if (type === "reaction") reply = null; // a una reacción no se responde
+            if (ib) reply = ib; // tocó una pregunta de plantilla → respuesta predefinida (cero tokens)
+            else if (type === "reaction") reply = null; // a una reacción no se responde
             else if (type === "image" && imgUrl) {
               const media = await fetchUrlBase64(imgUrl);
               reply = media && media.mime.startsWith("image/")
                 ? (await anovaVision(media.b64, media.mime, String(lead.texto || ""), nombre)) || typeReply("image")
                 : typeReply("image");
             } else if (type !== "text") reply = typeReply(type) || typeReply("sticker");
-            else reply = (await anovaReply(String(lead.texto ?? lead.idea ?? ""), nombre)).reply;
+            else reply = (await anovaReply(String(lead.texto ?? lead.idea ?? ""), nombre, await chatHistory(String(lead.contacto)), canal)).reply;
 
             if (reply) {
               await sendMetaDM(String(lead.contacto), reply);
@@ -441,9 +522,5 @@ export async function POST(req: Request) {
         await addLead(lead);
       }
     }
-  } catch {
-    /* nunca fallar el 200: Meta reintenta si no respondemos rápido */
   }
-
-  return new Response("EVENT_RECEIVED", { status: 200 });
 }

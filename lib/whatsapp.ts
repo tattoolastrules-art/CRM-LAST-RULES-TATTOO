@@ -85,6 +85,41 @@ export async function sendWhatsAppTemplate(to: string, name: string, params: str
   return res.json();
 }
 
+// Envía un mensaje con BOTONES interactivos (máx 3, títulos de máx 20 caracteres).
+// Es el equivalente en WhatsApp de las preguntas listas de Instagram/Messenger:
+// el cliente toca un botón y la respuesta llega al webhook como button_reply.
+export async function sendWhatsAppButtons(
+  to: string,
+  body: string,
+  buttons: { id: string; title: string }[],
+) {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_ID;
+  if (!token || !phoneId) throw new Error("Falta WHATSAPP_TOKEN / WHATSAPP_PHONE_ID");
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: body.slice(0, 1024) },
+        action: {
+          buttons: buttons.slice(0, 3).map((b) => ({
+            type: "reply",
+            // Array.from evita partir un emoji a la mitad (slice corta por UTF-16)
+            reply: { id: b.id.slice(0, 256), title: Array.from(b.title).slice(0, 20).join("") },
+          })),
+        },
+      },
+    }),
+  });
+  if (!res.ok) throw new Error("WhatsApp buttons " + res.status + ": " + (await res.text()));
+  return res.json();
+}
+
 export async function sendWhatsAppText(to: string, text: string) {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_ID;
