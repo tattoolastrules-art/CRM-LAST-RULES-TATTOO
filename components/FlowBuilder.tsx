@@ -24,12 +24,24 @@ import { customToFlowDef, type CustomFlow } from "@/lib/custom-flows-def";
 
 type Overrides = Record<string, Record<string, string>>;
 
+// Aplica las ediciones del admin a un nodo: texto (nodeId) y opciones (nodeId.opts)
+function applyOverrides(flow: FlowDef, n: FlowDef["nodes"][number], ov: Overrides) {
+  const optsOv = ov[flow.id]?.[n.id + ".opts"];
+  return {
+    ...n,
+    text: ov[flow.id]?.[n.id] ?? n.text,
+    options: optsOv != null
+      ? optsOv.split("\n").map((s) => s.trim()).filter(Boolean)
+      : n.options,
+  };
+}
+
 function toGraph(flow: FlowDef, ov: Overrides): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = flow.nodes.map((n) => ({
     id: n.id,
     type: "flowbox",
     position: { x: n.x, y: n.y },
-    data: { ...n, text: ov[flow.id]?.[n.id] ?? n.text } as unknown as Record<string, unknown>,
+    data: applyOverrides(flow, n, ov) as unknown as Record<string, unknown>,
   }));
   const edges: Edge[] = flow.edges.map((e, i) => ({
     id: `e${i}`,
@@ -59,7 +71,7 @@ export default function FlowBuilder() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [ov, setOv] = useState<Overrides>({});
-  const [edit, setEdit] = useState<{ nodeId: string; title: string; text: string } | null>(null);
+  const [edit, setEdit] = useState<{ nodeId: string; title: string; kind: string; text: string; opts: string | null } | null>(null);
   const [saving, setSaving] = useState(false);
   // null = aún no se decide (evita montar ReactFlow en celular y tirarlo un frame después)
   const [mode, setMode] = useState<"canvas" | "list" | null>(null);
@@ -96,16 +108,21 @@ export default function FlowBuilder() {
     setEdit(null);
   }, [activeId, flow, ov, setNodes, setEdges]);
 
+  // TODO nodo es editable: mensajes, disparadores, opciones, NOVA, acciones…
   const openEditor = useCallback(
-    (d: { kind?: string; title?: string; text?: string }, nodeId: string) => {
+    (d: { kind?: string; title?: string; text?: string; options?: string[] }, nodeId: string) => {
       if (activeCustom) {
         // Los flujos creados con el asistente se editan con su mismo asistente
         setWizard({ open: true, initial: activeCustom });
         return;
       }
-      if (d.kind === "message") {
-        setEdit({ nodeId, title: d.title || "Mensaje", text: d.text || "" });
-      }
+      setEdit({
+        nodeId,
+        title: d.title || "Paso",
+        kind: d.kind || "message",
+        text: d.text || "",
+        opts: d.options ? d.options.join("\n") : null,
+      });
     },
     [activeCustom],
   );
@@ -121,18 +138,24 @@ export default function FlowBuilder() {
     if (!edit) return;
     setSaving(true);
     try {
-      const r = await fetch("/api/flows", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flowId: flow.id, nodeId: edit.nodeId, text: edit.text }),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        setOv(d.overrides || {});
-        setEdit(null);
-      } else {
-        alert("Solo administradores pueden editar los mensajes.");
+      // texto del nodo + (si tiene) sus opciones, guardadas como nodeId.opts
+      const cambios = [{ nodeId: edit.nodeId, text: edit.text }];
+      if (edit.opts != null) cambios.push({ nodeId: edit.nodeId + ".opts", text: edit.opts });
+      let overrides: Overrides | null = null;
+      for (const c of cambios) {
+        const r = await fetch("/api/flows", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ flowId: flow.id, nodeId: c.nodeId, text: c.text }),
+        });
+        if (!r.ok) {
+          alert("Solo administradores pueden editar los flujos.");
+          return;
+        }
+        overrides = (await r.json()).overrides || {};
       }
+      if (overrides) setOv(overrides);
+      setEdit(null);
     } finally {
       setSaving(false);
     }
@@ -165,8 +188,8 @@ export default function FlowBuilder() {
     [setEdges],
   );
 
-  // Nodos con el texto editado aplicado (para la vista Lista)
-  const listNodes: FNode[] = flow.nodes.map((n) => ({ ...n, text: ov[flow.id]?.[n.id] ?? n.text }));
+  // Nodos con las ediciones aplicadas (para la vista Lista)
+  const listNodes: FNode[] = flow.nodes.map((n) => applyOverrides(flow, n, ov));
 
   return (
     <div className="flex h-full">
@@ -284,19 +307,17 @@ export default function FlowBuilder() {
               <div className="mb-2 text-[11px] text-bone-dim">
                 {activeCustom
                   ? "✏️ Toca cualquier tarjeta para editar este flujo con el asistente"
-                  : "✏️ Toca una tarjeta verde de Mensaje para editar lo que responde Ana"}
+                  : "✏️ Toca cualquier tarjeta para editarla: mensajes, botones, disparadores…"}
               </div>
               {listNodes.map((n, i) => {
                 const meta = KIND_META[n.kind] ?? KIND_META.message;
                 const Icon = meta.Icon;
-                const editable = activeCustom || n.kind === "message";
                 return (
                   <div key={n.id} className="relative">
                     {i > 0 && <div className="ml-5 h-3 w-px bg-line" />}
                     <button
-                      onClick={() => editable && openEditor(n, n.id)}
-                      disabled={!editable}
-                      className={`w-full rounded-xl border bg-[#1b2336] p-0 text-left ${editable ? "transition hover:brightness-110" : "cursor-default"}`}
+                      onClick={() => openEditor(n, n.id)}
+                      className="w-full rounded-xl border bg-[#1b2336] p-0 text-left transition hover:brightness-110"
                       style={{ borderColor: meta.color + "55" }}
                     >
                       <div
@@ -305,7 +326,7 @@ export default function FlowBuilder() {
                       >
                         <Icon size={13} />
                         {n.title || meta.label}
-                        {editable && n.kind === "message" && <Pencil size={11} className="ml-auto opacity-60" />}
+                        <Pencil size={11} className="ml-auto opacity-60" />
                       </div>
                       <div className="px-3 py-2.5">
                         {n.text && <div className="text-[12.5px] leading-snug text-bone">{n.text}</div>}
@@ -353,27 +374,57 @@ export default function FlowBuilder() {
         </ReactFlow>
         )}
 
-        {/* Editor del mensaje seleccionado */}
-        {edit && (
-          <div className="glass absolute inset-x-0 bottom-0 z-20 rounded-t-xl p-3 sm:inset-x-3 sm:bottom-3 sm:rounded-xl">
+        {/* Editor de la caja seleccionada (todas son editables) */}
+        {edit && (() => {
+          const SUB: Record<string, string> = {
+            message: "esto es lo que Ana responde",
+            choice: "el paso de decisión y sus botones",
+            trigger: "cómo se presenta el disparador",
+            ai: "la instrucción que guía a NOVA aquí",
+            action: "qué hace el sistema en este paso",
+            handoff: "hacia dónde continúa la conversación",
+          };
+          return (
+          <div className="glass absolute inset-x-0 bottom-0 z-20 max-h-[70dvh] overflow-y-auto rounded-t-xl p-3 sm:inset-x-3 sm:bottom-3 sm:rounded-xl">
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-xs font-semibold text-bone">✏️ {edit.title} <span className="text-bone-dim">· esto es lo que Ana responde</span></span>
-              <button onClick={() => setEdit(null)} className="text-bone-dim hover:text-bone">✕</button>
+              <span className="text-xs font-semibold text-bone">✏️ {edit.title} <span className="text-bone-dim">· {SUB[edit.kind] || SUB.message}</span></span>
+              <button onClick={() => setEdit(null)} className="text-bone-dim hover:text-bone" aria-label="Cerrar">✕</button>
             </div>
             <textarea
               value={edit.text}
               onChange={(e) => setEdit({ ...edit, text: e.target.value })}
-              rows={4}
+              rows={edit.opts != null ? 2 : 4}
+              placeholder={edit.kind === "choice" ? "Texto del paso (opcional)" : ""}
               className="w-full resize-y rounded-lg border border-line bg-navy px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
             />
+            {edit.opts != null && (
+              <>
+                <div className="mb-1 mt-2 text-[11px] text-bone-dim">
+                  Botones que ve el cliente — uno por línea (mantén la misma cantidad para que las flechas del lienzo sigan cuadrando)
+                </div>
+                <textarea
+                  value={edit.opts}
+                  onChange={(e) => setEdit({ ...edit, opts: e.target.value })}
+                  rows={Math.min(6, Math.max(2, edit.opts.split("\n").length))}
+                  className="w-full resize-y rounded-lg border border-gold/30 bg-navy px-3 py-2 text-sm text-gold-soft outline-none focus:border-gold/50"
+                />
+              </>
+            )}
+            {edit.kind === "trigger" && (
+              <p className="mt-1.5 text-[10.5px] leading-snug text-bone-dim/80">
+                Nota: las palabras exactas que encienden los flujos F1–F22 las afina PRODY-G en el motor; en los flujos
+                que creas con “Crear flujo” las palabras las defines tú y aplican de una.
+              </p>
+            )}
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="hidden text-[10px] text-bone-dim/70 sm:inline">Los cambios aplican de una en las respuestas de Ana · Para flujos nuevos usa “Crear flujo”</span>
+              <span className="hidden text-[10px] text-bone-dim/70 sm:inline">Los cambios aplican de una · Para flujos nuevos usa “Crear flujo”</span>
               <button onClick={saveEdit} disabled={saving} className="ml-auto shrink-0 rounded-lg bg-gold px-4 py-1.5 text-sm font-semibold text-navy hover:bg-gold-soft disabled:opacity-50">
                 {saving ? "Guardando…" : "Guardar"}
               </button>
             </div>
           </div>
-        )}
+          );
+        })()}
         </div>
       </div>
 
