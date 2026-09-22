@@ -1,6 +1,7 @@
 // Envío de mensajes por WhatsApp Cloud API. Requiere en el entorno:
 //   WHATSAPP_TOKEN     (token permanente de Meta)
 //   WHATSAPP_PHONE_ID  (Phone Number ID)
+import crypto from "crypto";
 
 export function waConfigured(): boolean {
   return !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_ID);
@@ -117,6 +118,43 @@ export async function sendWhatsAppButtons(
     }),
   });
   if (!res.ok) throw new Error("WhatsApp buttons " + res.status + ": " + (await res.text()));
+  return res.json();
+}
+
+// Envía el formulario nativo "Servicios" (WhatsApp Flows): cita, cotización,
+// asesoría, cursos, retoque, cover-up, bono y preguntas frecuentes en un solo
+// menú. Requiere WHATSAPP_FLOW_ID (el Flow ya creado y publicado en Meta).
+export async function sendWhatsAppFlow(to: string, bodyText: string, cta: string, screen = "MENU") {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_ID;
+  const flowId = process.env.WHATSAPP_FLOW_ID;
+  if (!token || !phoneId) throw new Error("Falta WHATSAPP_TOKEN / WHATSAPP_PHONE_ID");
+  if (!flowId) throw new Error("Falta WHATSAPP_FLOW_ID");
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "flow",
+        body: { text: bodyText.slice(0, 1024) },
+        action: {
+          name: "flow",
+          parameters: {
+            flow_message_version: "3",
+            flow_token: crypto.randomUUID(),
+            flow_id: flowId,
+            flow_cta: cta.slice(0, 30),
+            flow_action: "navigate",
+            flow_action_payload: { screen, data: {} },
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) throw new Error("WhatsApp flow " + res.status + ": " + (await res.text()));
   return res.json();
 }
 

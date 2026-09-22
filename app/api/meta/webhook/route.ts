@@ -2,16 +2,11 @@ import crypto from "crypto";
 import { addMetaEvent } from "@/lib/meta";
 import { addLead, upsertLeadByContact } from "@/lib/leads";
 import { anovaReply, anovaVision, typeReply, isGreeting, type ChatTurn } from "@/lib/anova";
-import { waConfigured, sendWhatsAppText, sendWhatsAppButtons, fetchMediaBase64 } from "@/lib/whatsapp";
+import { waConfigured, sendWhatsAppText, sendWhatsAppButtons, sendWhatsAppFlow, fetchMediaBase64 } from "@/lib/whatsapp";
 import { getIceBreakers, findIceBreakerAnswer, ibPayload } from "@/lib/ice-breakers";
 import { fbConfigured, sendMetaDM, fetchMetaName, fetchUrlBase64, replyComment, sendPrivateReply } from "@/lib/meta-send";
 import { addComment, patchComment } from "@/lib/comments";
-import { saveJSON } from "@/lib/store";
-
-// Última falla del auto-respondedor (para diagnóstico: clave debug_last en Neon)
-function logFail(donde: string, e: unknown) {
-  saveJSON("debug_last", { at: new Date().toISOString(), donde, err: String((e as Error)?.message || e).slice(0, 400) }).catch(() => {});
-}
+import { loadJSON, saveJSON } from "@/lib/store";
 
 // Ids propios (página FB e IG del estudio): sus comentarios/respuestas no se registran (anti-bucle)
 const OWN_IDS = new Set(["797899886739979", "17841466188660965"]);
@@ -19,6 +14,24 @@ import { getSettings, saveSettings } from "@/lib/settings";
 import { addConvoMsg, getConvos } from "@/lib/convos";
 import { pushAll } from "@/lib/push";
 import { notifyStudio } from "@/lib/notify";
+
+// Última falla del auto-respondedor (diagnóstico: clave debug_last en Neon) +
+// aviso por WhatsApp al estudio para que se note el mismo día y no cuando lo
+// reporte un cliente. Máx. 1 aviso cada 15 min para no saturar si el fallo se
+// repite en ráfaga (p. ej. un permiso de Meta caído responde igual a cada mensaje).
+async function logFail(donde: string, e: unknown): Promise<void> {
+  const err = String((e as Error)?.message || e).slice(0, 400);
+  const at = new Date().toISOString();
+  await saveJSON("debug_last", { at, donde, err }).catch(() => {});
+  try {
+    const prev = await loadJSON<{ at?: string }>("debug_alert", {});
+    if (prev.at && Date.now() - new Date(prev.at).getTime() < 15 * 60 * 1000) return;
+    await saveJSON("debug_alert", { at });
+    await notifyStudio(`⚠️ Ana no pudo responder (${donde})\n${err}`);
+  } catch {
+    /* un aviso fallido nunca debe romper la recepción del webhook */
+  }
+}
 
 const ABONO_RE = /(abono|comprobante|consign|transferencia|transferí|nequi|daviplata|pag(u?é|ado|o\s+ya))/i;
 const CONFIRM_RE = /^(confirmo|s[ií],?\s*(confirmo|asistir[eé]|voy|all[ií]\s+estar[eé])|all[ií]\s+estar[eé])/i;
@@ -85,8 +98,37 @@ interface WaMessage {
   location?: { latitude?: number; longitude?: number; name?: string };
   reaction?: { emoji?: string };
   button?: { text?: string };
-  interactive?: { button_reply?: { id?: string; title?: string }; list_reply?: { id?: string; title?: string } };
+  interactive?: {
+    button_reply?: { id?: string; title?: string };
+    list_reply?: { id?: string; title?: string };
+    nfm_reply?: { response_json?: string; name?: string }; // envío final de un WhatsApp Flow
+  };
 }
+
+// Etiqueta legible de cada categoría del Flow "Servicios" (para el CRM y el aviso al estudio)
+const FLOW_CATEGORIA_LABEL: Record<string, string> = {
+  cita: "📅 Agendar cita",
+  idea: "🎨 Cotización de idea",
+  asesoria: "💬 Asesoría",
+  cursos: "🎓 Cursos y talleres",
+  retoque: "🩹 Retoque",
+  coverup: "🖌️ Cover-up",
+  bono: "🎁 Bono regalo",
+  faq: "❓ Preguntas frecuentes",
+};
+
+// Arma un resumen legible de lo que el cliente llenó en el Flow
+function flowLabel(data: Record<string, unknown>): string {
+  const titulo = FLOW_CATEGORIA_LABEL[String(data.categoria || "")] || "🗂️ Formulario de servicios";
+  const resto = Object.entries(data)
+    .filter(([k, v]) => k !== "categoria" && v !== undefined && v !== "")
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(" · ");
+  return resto ? `${titulo} — ${resto}` : titulo;
+}
+
+// Palabra clave que dispara el menú de servicios (Flow nativo de WhatsApp)
+const SERVICIOS_RE = /\b(servicios?|men[uú]|cat[aá]logo|opciones)\b/i;
 interface MetaAttachment {
   type?: string;
   payload?: { url?: string; sticker_id?: number; title?: string; coordinates?: { lat?: number; long?: number } };
@@ -150,6 +192,11 @@ function describeWa(m: WaMessage): { label: string; waType: string; mediaId?: st
     case "button":
       return { label: m.button?.text || "[botón]", waType: "text", texto: m.button?.text || "" };
     case "interactive": {
+      if (m.interactive?.nfm_reply?.response_json) {
+        let data: Record<string, unknown> = {};
+        try { data = JSON.parse(m.interactive.nfm_reply.response_json); } catch { /* json inválido: se ignora */ }
+        return { label: flowLabel(data), waType: "flow_reply", texto: flowLabel(data) };
+      }
       const title = m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || "[interacción]";
       const ibId = m.interactive?.button_reply?.id || m.interactive?.list_reply?.id;
       return { label: title, waType: "text", texto: title, ibId };
@@ -401,12 +448,27 @@ async function procesarLead(lead: Lead): Promise<void> {
           notifyStudio(`💰 POSIBLE ABONO / PAGO\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 200)}”`).catch(() => {});
         } else if (CONFIRM_RE.test(texto)) {
           notifyStudio(`✅ CONFIRMÓ ASISTENCIA\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 120)}”`).catch(() => {});
+        } else if (lead.waType === "flow_reply") {
+          notifyStudio(`🗂️ NUEVA SOLICITUD (formulario)\n${lead.nombre}\n📱 ${lead.contacto}\n${texto.slice(0, 300)}`).catch(() => {});
         }
 
         // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)
         const cfg = await getSettings();
         if (waConfigured() && cfg.anovaAuto && process.env.ANOVA_AUTO !== "off") {
           try {
+            if (lead.waType === "flow_reply") {
+              // Envío final del Flow: ya quedó en el CRM y avisado arriba; solo se confirma al cliente (cero tokens)
+              const msg = "¡Recibido! 🖤 Ya tenemos tu solicitud, en un momento te escribimos para confirmar los detalles.";
+              await sendWhatsAppText(from, msg);
+              await addConvoMsg(from, "", "ana", msg);
+              return;
+            }
+            if (process.env.WHATSAPP_FLOW_ID && SERVICIOS_RE.test(texto)) {
+              // Palabra clave → menú de servicios (formulario nativo, cero tokens)
+              await sendWhatsAppFlow(from, "Elige qué necesitas y te ayudamos al instante 👇", "Ver servicios");
+              await addConvoMsg(from, "", "ana", "🗂️ Te envié el menú de servicios (Flow)");
+              return;
+            }
             const ibCfg = await getIceBreakers();
             const ib = findIceBreakerAnswer(ibCfg, String(lead.ibId || ""), texto);
             if (ib) {
@@ -425,8 +487,8 @@ async function procesarLead(lead: Lead): Promise<void> {
                 await addConvoMsg(from, "", "ana", reply);
               }
             }
-          } catch {
-            /* si falla el envío no rompemos la recepción */
+          } catch (e) {
+            logFail("whatsapp", e); // si falla el envío no rompemos la recepción, pero sí quedó registrado y avisado
           }
         }
       } else if (lead.kind === "dm" && lead.contacto) {

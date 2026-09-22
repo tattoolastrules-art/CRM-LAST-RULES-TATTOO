@@ -1,0 +1,465 @@
+{
+  "version": "6.3",
+  "data_api_version": "3.0",
+  "routing_model": {
+    "MENU": ["CITA", "IDEA", "ASESORIA", "CURSOS", "RETOQUE", "COVERUP", "BONO", "FAQ"],
+    "CITA": [],
+    "IDEA": [],
+    "ASESORIA": [],
+    "CURSOS": [],
+    "RETOQUE": [],
+    "COVERUP": [],
+    "BONO": [],
+    "FAQ": []
+  },
+  "screens": [
+    {
+      "id": "MENU",
+      "title": "Last Rules Tattoo",
+      "terminal": false,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              { "type": "TextHeading", "text": "¿En qué te ayudamos?" },
+              {
+                "type": "RadioButtonsGroup",
+                "name": "categoria",
+                "label": "Elige una opción",
+                "required": true,
+                "data-source": [
+                  { "id": "cita", "title": "📅 Agendar una cita" },
+                  { "id": "idea", "title": "🎨 Cotizar mi idea de tatuaje" },
+                  { "id": "asesoria", "title": "💬 Asesoría con un tatuador" },
+                  { "id": "cursos", "title": "🎓 Cursos y talleres" },
+                  { "id": "retoque", "title": "🩹 Retoque de un tatuaje" },
+                  { "id": "coverup", "title": "🖌️ Cover-up (tapar un tatuaje)" },
+                  { "id": "bono", "title": "🎁 Bono regalo" },
+                  { "id": "faq", "title": "❓ Preguntas frecuentes" }
+                ]
+              },
+              {
+                "type": "Footer",
+                "label": "Continuar",
+                "on-click-action": {
+                  "name": "data_exchange",
+                  "payload": { "categoria": "${form.categoria}" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "CITA",
+      "title": "Agendar cita",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "estilo",
+                "label": "Estilo que te interesa",
+                "required": true,
+                "data-source": [
+                  { "id": "realismo", "title": "Realismo" },
+                  { "id": "blackwork", "title": "Blackwork" },
+                  { "id": "fineline", "title": "Fine line" },
+                  { "id": "tradicional", "title": "Tradicional" },
+                  { "id": "otro", "title": "Otro / no sé aún" }
+                ]
+              },
+              {
+                "type": "DatePicker",
+                "name": "fecha",
+                "label": "Fecha preferida",
+                "required": true
+              },
+              {
+                "type": "Dropdown",
+                "name": "franja",
+                "label": "Horario preferido",
+                "required": true,
+                "data-source": [
+                  { "id": "manana", "title": "Mañana" },
+                  { "id": "tarde", "title": "Tarde" },
+                  { "id": "cualquiera", "title": "Cualquiera" }
+                ]
+              },
+              {
+                "type": "TextArea",
+                "name": "detalle",
+                "label": "Cuéntanos brevemente tu idea",
+                "required": false
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "cita",
+                    "estilo": "${form.estilo}",
+                    "fecha": "${form.fecha}",
+                    "franja": "${form.franja}",
+                    "detalle": "${form.detalle}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "IDEA",
+      "title": "Cotizar mi idea",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "tamano",
+                "label": "Tamaño aproximado",
+                "required": true,
+                "data-source": [
+                  { "id": "pequeno", "title": "Pequeño (hasta 10cm)" },
+                  { "id": "mediano", "title": "Mediano" },
+                  { "id": "grande", "title": "Grande / varias sesiones" }
+                ]
+              },
+              {
+                "type": "TextInput",
+                "name": "zona",
+                "label": "Zona del cuerpo",
+                "input-type": "text",
+                "required": true
+              },
+              {
+                "type": "TextArea",
+                "name": "descripcion",
+                "label": "Describe tu idea",
+                "required": true
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "idea",
+                    "tamano": "${form.tamano}",
+                    "zona": "${form.zona}",
+                    "descripcion": "${form.descripcion}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ASESORIA",
+      "title": "Asesoría",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "medio",
+                "label": "¿Cómo prefieres la asesoría?",
+                "required": true,
+                "data-source": [
+                  { "id": "chat", "title": "Por chat (aquí mismo)" },
+                  { "id": "llamada", "title": "Llamada" },
+                  { "id": "presencial", "title": "Presencial en el estudio" }
+                ]
+              },
+              {
+                "type": "TextArea",
+                "name": "pregunta",
+                "label": "¿Qué te gustaría preguntar?",
+                "required": true
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "asesoria",
+                    "medio": "${form.medio}",
+                    "pregunta": "${form.pregunta}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "CURSOS",
+      "title": "Cursos y talleres",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "nivel",
+                "label": "¿Qué te interesa?",
+                "required": true,
+                "data-source": [
+                  { "id": "basico", "title": "Curso básico" },
+                  { "id": "intermedio", "title": "Intermedio" },
+                  { "id": "avanzado", "title": "Avanzado" },
+                  { "id": "mentoria", "title": "Mentoría 1 a 1" }
+                ]
+              },
+              {
+                "type": "RadioButtonsGroup",
+                "name": "experiencia",
+                "label": "¿Ya tienes experiencia tatuando?",
+                "required": true,
+                "data-source": [
+                  { "id": "si", "title": "Sí" },
+                  { "id": "no", "title": "No, soy principiante" }
+                ]
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "cursos",
+                    "nivel": "${form.nivel}",
+                    "experiencia": "${form.experiencia}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "RETOQUE",
+      "title": "Retoque",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "DatePicker",
+                "name": "fechaOriginal",
+                "label": "Fecha aproximada del tatuaje original",
+                "required": false
+              },
+              {
+                "type": "TextInput",
+                "name": "zona",
+                "label": "Zona del cuerpo",
+                "input-type": "text",
+                "required": true
+              },
+              {
+                "type": "TextArea",
+                "name": "detalle",
+                "label": "¿Qué necesita el retoque?",
+                "required": true
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "retoque",
+                    "fechaOriginal": "${form.fechaOriginal}",
+                    "zona": "${form.zona}",
+                    "detalle": "${form.detalle}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "COVERUP",
+      "title": "Cover-up",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "TextInput",
+                "name": "zona",
+                "label": "Zona del tatuaje a cubrir",
+                "input-type": "text",
+                "required": true
+              },
+              {
+                "type": "Dropdown",
+                "name": "tamano",
+                "label": "Tamaño aproximado",
+                "required": true,
+                "data-source": [
+                  { "id": "pequeno", "title": "Pequeño" },
+                  { "id": "mediano", "title": "Mediano" },
+                  { "id": "grande", "title": "Grande" }
+                ]
+              },
+              {
+                "type": "TextArea",
+                "name": "idea",
+                "label": "¿Qué idea tienes para cubrirlo?",
+                "required": true
+              },
+              {
+                "type": "TextBody",
+                "text": "Después de enviar esto, mándanos por chat una foto del tatuaje a cubrir para poder cotizarlo bien."
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "coverup",
+                    "zona": "${form.zona}",
+                    "tamano": "${form.tamano}",
+                    "idea": "${form.idea}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "BONO",
+      "title": "Bono regalo",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              {
+                "type": "Dropdown",
+                "name": "monto",
+                "label": "Monto del bono",
+                "required": true,
+                "data-source": [
+                  { "id": "100000", "title": "$100.000" },
+                  { "id": "200000", "title": "$200.000" },
+                  { "id": "300000", "title": "$300.000" },
+                  { "id": "otro", "title": "Otro monto" }
+                ]
+              },
+              {
+                "type": "TextInput",
+                "name": "para",
+                "label": "¿Para quién es el regalo?",
+                "input-type": "text",
+                "required": false
+              },
+              {
+                "type": "Footer",
+                "label": "Enviar",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": {
+                    "categoria": "bono",
+                    "monto": "${form.monto}",
+                    "para": "${form.para}"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "FAQ",
+      "title": "Preguntas frecuentes",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Form",
+            "name": "form",
+            "children": [
+              { "type": "TextSubheading", "text": "📍 Ubicación" },
+              { "type": "TextBody", "text": "Te la confirmamos por chat según la sede más cercana a ti." },
+              { "type": "TextSubheading", "text": "🕒 Horarios" },
+              { "type": "TextBody", "text": "Martes a sábado, con cita previa." },
+              { "type": "TextSubheading", "text": "💳 Métodos de pago" },
+              { "type": "TextBody", "text": "Efectivo, transferencia y tarjeta." },
+              { "type": "TextSubheading", "text": "💰 Precios" },
+              { "type": "TextBody", "text": "Varían según tamaño, estilo y zona — cotiza tu idea en el menú anterior para un precio a la medida." },
+              {
+                "type": "Footer",
+                "label": "Listo",
+                "on-click-action": {
+                  "name": "complete",
+                  "payload": { "categoria": "faq" }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
