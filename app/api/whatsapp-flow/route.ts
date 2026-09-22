@@ -21,7 +21,12 @@ interface DecryptedFlowRequest {
 }
 
 function getPrivateKey(): crypto.KeyObject {
-  const raw = process.env.FLOW_PRIVATE_KEY || "";
+  let raw = (process.env.FLOW_PRIVATE_KEY || "").trim();
+  // Si se pegó como base64 en una sola línea (evita que el hosting rompa los
+  // saltos de línea del PEM), se decodifica antes de usarla.
+  if (raw && !raw.includes("BEGIN")) {
+    try { raw = Buffer.from(raw, "base64").toString("utf8"); } catch { /* se intenta tal cual abajo */ }
+  }
   const pem = raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
   return crypto.createPrivateKey({
     key: pem,
