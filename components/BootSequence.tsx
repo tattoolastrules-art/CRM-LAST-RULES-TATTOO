@@ -18,14 +18,59 @@ const PASOS = [
 
 const FINAL = "Todos los sistemas se encuentran arriba. Sistema Telaraña: activo. Todo funcionando. Bienvenido al Templo.";
 
+// Una voz de España (es-ES) solo se usa si el dispositivo no tiene ninguna latina.
+const VOCES_LATINAS = ["salome", "dalia", "paloma", "sabina", "paulina", "elena", "camila", "francisca", "google español de estados unidos"];
+
 function pickVoice(): SpeechSynthesisVoice | null {
   const voices = window.speechSynthesis?.getVoices?.() || [];
-  const prefer = ["sabina", "dalia", "paulina", "camila", "francisca", "helena", "es-mx", "es-co", "es-us", "es-419"];
-  for (const p of prefer) {
-    const v = voices.find((x) => (x.name + " " + x.lang).toLowerCase().includes(p));
+  const latinas = voices.filter((x) => /^es[-_]/i.test(x.lang || "") && !/^es[-_]es$/i.test(x.lang || ""));
+  for (const n of VOCES_LATINAS) {
+    const v = latinas.find((x) => x.name.toLowerCase().includes(n));
     if (v) return v;
   }
-  return voices.find((x) => x.lang?.toLowerCase().startsWith("es")) || null;
+  return latinas[0] || voices.find((x) => x.lang?.toLowerCase().startsWith("es")) || null;
+}
+
+// Chrome entrega las voces de forma asíncrona.
+function vocesListas(): Promise<void> {
+  return new Promise((resolve) => {
+    const s = window.speechSynthesis;
+    if (!s || s.getVoices().length) return resolve();
+    s.addEventListener("voiceschanged", () => resolve(), { once: true });
+    setTimeout(resolve, 1500);
+  });
+}
+
+// GainNode y no audio.volume: en iPhone audio.volume se ignora.
+const MUSICA = "/sounds/boot.mp3";
+const VOLUMEN_MUSICA = 0.2;
+
+function iniciarMusica(): { detener: (ms: number) => void } | null {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    const audio = new Audio(MUSICA);
+    const ctx = new Ctx();
+    const gain = ctx.createGain();
+    ctx.createMediaElementSource(audio).connect(gain).connect(ctx.destination);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(VOLUMEN_MUSICA, ctx.currentTime + 1.5);
+    audio.play().catch(() => {});
+    let detenida = false;
+    return {
+      detener: (ms: number) => {
+        if (detenida) return;
+        detenida = true;
+        const t = ctx.currentTime;
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.linearRampToValueAtTime(0, t + ms / 1000);
+        setTimeout(() => { audio.pause(); ctx.close().catch(() => {}); }, ms + 100);
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 function speak(text: string): Promise<void> {
@@ -34,7 +79,7 @@ function speak(text: string): Promise<void> {
       const u = new SpeechSynthesisUtterance(text);
       const v = pickVoice();
       if (v) u.voice = v;
-      u.lang = v?.lang || "es-MX";
+      u.lang = v?.lang || "es-US";
       u.rate = 1.02;
       u.pitch = 1.05;
       u.onend = () => resolve();
@@ -52,6 +97,7 @@ export default function BootSequence({ userName, onDone }: { userName: string; o
   const [fase, setFase] = useState<"off" | "corriendo" | "final">("off");
   const [hechos, setHechos] = useState(0);
   const corriendo = useRef(false);
+  const musica = useRef<ReturnType<typeof iniciarMusica>>(null);
 
   // Lluvia de hojas de ginkgo (posiciones y tiempos pseudoaleatorios estables)
   const hojas = useMemo(
@@ -66,15 +112,19 @@ export default function BootSequence({ userName, onDone }: { userName: string; o
     [],
   );
 
-  // precarga las voces (algunos navegadores las cargan async)
+  // precarga las voces (algunos navegadores las cargan async); al salir, silencia la música
   useEffect(() => {
     try { window.speechSynthesis?.getVoices?.(); } catch {}
+    return () => musica.current?.detener(0);
   }, []);
 
   async function encender() {
     if (corriendo.current) return;
     corriendo.current = true;
+    // debe arrancar dentro del clic: los navegadores bloquean audio sin interacción
+    musica.current = iniciarMusica();
     setFase("corriendo");
+    await vocesListas();
     const nombre = (userName || "").split(" ")[0];
     await speak(`Bienvenido${nombre ? ", " + nombre : ""}. Iniciando Last Rules O Ese.`);
     for (let i = 0; i < PASOS.length; i++) {
@@ -83,6 +133,7 @@ export default function BootSequence({ userName, onDone }: { userName: string; o
     }
     setFase("final");
     await speak(FINAL);
+    musica.current?.detener(1300);
     setTimeout(onDone, 1400);
   }
 
