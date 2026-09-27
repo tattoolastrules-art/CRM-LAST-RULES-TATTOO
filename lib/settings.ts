@@ -14,18 +14,20 @@ export const MODULOS = [
 
 export interface Settings {
   anovaAuto: boolean; // respuestas automáticas de NOVA/Ana en WhatsApp
+  modoManual: boolean; // Ana solo saluda a los contactos nuevos; el resto lo responde el equipo
   modules: Record<string, boolean>; // módulos visibles (solo el dueño los apaga/enciende)
   notifyPhone: string; // WhatsApp del estudio que recibe los avisos importantes
   adminPhones: string[]; // números que activaron modo administrador (código por WhatsApp)
 }
 
 const DEFAULT_MODULES: Record<string, boolean> = Object.fromEntries(MODULOS.map((m) => [m.id, true]));
-const DEFAULTS: Settings = { anovaAuto: true, modules: DEFAULT_MODULES, notifyPhone: "", adminPhones: [] };
+const DEFAULTS: Settings = { anovaAuto: true, modoManual: false, modules: DEFAULT_MODULES, notifyPhone: "", adminPhones: [] };
 
 export async function getSettings(): Promise<Settings> {
   const s = await loadJSON<Partial<Settings>>("settings", DEFAULTS);
   return {
     anovaAuto: s.anovaAuto ?? true,
+    modoManual: s.modoManual ?? false,
     modules: { ...DEFAULT_MODULES, ...(s.modules || {}) },
     notifyPhone: s.notifyPhone || "",
     adminPhones: Array.isArray(s.adminPhones) ? s.adminPhones : [],
@@ -36,6 +38,7 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   const cur = await getSettings();
   const next: Settings = {
     anovaAuto: patch.anovaAuto ?? cur.anovaAuto,
+    modoManual: patch.modoManual ?? cur.modoManual,
     modules: { ...cur.modules, ...(patch.modules || {}) },
     notifyPhone: (patch.notifyPhone ?? cur.notifyPhone).replace(/[^\d]/g, "").slice(0, 15),
     adminPhones: (patch.adminPhones ?? cur.adminPhones).map((n) => n.replace(/[^\d]/g, "")).filter(Boolean).slice(0, 10),

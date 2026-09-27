@@ -19,6 +19,8 @@ import {
   BellOff,
   LogOut,
   Rocket,
+  Hand,
+  Bot,
 } from "lucide-react";
 import FuncionesPanel from "./FuncionesPanel";
 import SistemaAdmin from "./SistemaAdmin";
@@ -106,6 +108,7 @@ export default function AppShell() {
   const [hintShown, setHintShown] = useState<Record<string, boolean>>({});
   const [pushOn, setPushOn] = useState(false);
   const [booting, setBooting] = useState(false);
+  const [modoManual, setModoManual] = useState(false);
 
   useEffect(() => {
     if (typeof Notification !== "undefined" && Notification.permission === "granted" && localStorage.getItem("lr_push") === "on") {
@@ -155,9 +158,24 @@ export default function AppShell() {
       .catch(() => {});
     fetch("/api/settings")
       .then((r) => (r.ok ? r.json() : null))
-      .then((s) => s && setMods(s.modules || {}))
+      .then((s) => { if (s) { setMods(s.modules || {}); setModoManual(!!s.modoManual); } })
       .catch(() => {});
   }, [user]);
+
+  async function toggleManual() {
+    const next = !modoManual;
+    if (user?.role !== "admin") {
+      alert((modoManual ? "MODO MANUAL activo" : "MODO IA activo") + "\n\nSolo el administrador puede cambiar el modo.");
+      return;
+    }
+    const ok = confirm(next
+      ? "Activar MODO MANUAL\n\nAna solo saluda a los clientes nuevos (y responde los botones de ese saludo). Todo lo demás lo responde el equipo desde Omnicanal."
+      : "Volver al MODO IA\n\nAna vuelve a responder automáticamente todos los mensajes.");
+    if (!ok) return;
+    setModoManual(next);
+    const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modoManual: next }) });
+    if (!r.ok) { setModoManual(!next); alert("No se pudo cambiar el modo. Intenta de nuevo."); }
+  }
 
   // La insinuación aparece tras un buen rato en el módulo, desaparece sola en
   // segundos y máximo salen 2 por sesión (para no cansar)
@@ -216,9 +234,17 @@ export default function AppShell() {
           </button>
         ))}
         <button
+          onClick={toggleManual}
+          title={modoManual ? "Modo manual: Ana solo saluda, el equipo responde el resto (clic para cambiar)" : "Modo IA: Ana responde todo automáticamente (clic para cambiar)"}
+          className={`ml-auto flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition sm:ml-0 sm:mt-auto sm:w-[62px] sm:gap-1 sm:py-2.5 ${modoManual ? "bg-gold/15 text-gold" : "text-bone-dim hover:bg-white/5 hover:text-bone"}`}
+        >
+          {modoManual ? <Hand size={18} /> : <Bot size={18} />}
+          <span className="text-[10px] font-medium">{modoManual ? "Manual" : "Modo IA"}</span>
+        </button>
+        <button
           onClick={togglePush}
           title={pushOn ? "Notificaciones activas en este dispositivo (clic para apagar)" : "Activar notificaciones en este dispositivo"}
-          className={`ml-auto flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition hover:bg-white/5 sm:ml-0 sm:mt-auto sm:w-[62px] sm:gap-1 sm:py-2.5 ${pushOn ? "text-gold" : "text-bone-dim hover:text-bone"}`}
+          className={`flex w-[58px] shrink-0 flex-col items-center gap-0.5 rounded-xl py-1.5 transition hover:bg-white/5 sm:w-[62px] sm:gap-1 sm:py-2.5 ${pushOn ? "text-gold" : "text-bone-dim hover:text-bone"}`}
         >
           {pushOn ? <Bell size={18} /> : <BellOff size={18} />}
           <span className="text-[10px] font-medium">Avisos</span>

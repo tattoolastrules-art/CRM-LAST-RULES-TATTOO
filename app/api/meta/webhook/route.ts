@@ -471,15 +471,24 @@ async function procesarLead(lead: Lead): Promise<void> {
             }
             const ibCfg = await getIceBreakers();
             const ib = findIceBreakerAnswer(ibCfg, String(lead.ibId || ""), texto);
+            // Modo manual: el contacto nuevo recibe la bienvenida escriba lo que escriba
+            const saludar = esNuevo && lead.waType !== "reaction" &&
+              (cfg.modoManual || ((lead.waType || "text") === "text" && isGreeting(texto) && ibCfg.whatsapp.length > 0));
             if (ib) {
               // Tocó un botón de plantilla → respuesta predefinida (cero tokens)
               await sendWhatsAppText(from, ib);
               await addConvoMsg(from, "", "ana", ib);
-            } else if (esNuevo && (lead.waType || "text") === "text" && isGreeting(texto) && ibCfg.whatsapp.length) {
-              // Contacto nuevo que saluda → bienvenida con las plantillas listas (botones)
-              const botones = ibCfg.whatsapp.map((x, i) => ({ id: ibPayload("whatsapp", i), title: x.q }));
-              await sendWhatsAppButtons(from, ibCfg.waWelcome, botones);
-              await addConvoMsg(from, "", "ana", ibCfg.waWelcome + "\n" + botones.map((b) => "▢ " + b.title).join("\n"));
+            } else if (saludar) {
+              if (ibCfg.whatsapp.length) {
+                const botones = ibCfg.whatsapp.map((x, i) => ({ id: ibPayload("whatsapp", i), title: x.q }));
+                await sendWhatsAppButtons(from, ibCfg.waWelcome, botones);
+                await addConvoMsg(from, "", "ana", ibCfg.waWelcome + "\n" + botones.map((b) => "▢ " + b.title).join("\n"));
+              } else {
+                await sendWhatsAppText(from, ibCfg.waWelcome);
+                await addConvoMsg(from, "", "ana", ibCfg.waWelcome);
+              }
+            } else if (cfg.modoManual) {
+              // el resto lo responde el equipo desde Omnicanal
             } else {
               const reply = await replyFor(lead, media, await chatHistory(from), "whatsapp");
               if (reply) {
@@ -498,6 +507,7 @@ async function procesarLead(lead: Lead): Promise<void> {
         lead.nombre = nombre;
         await upsertLeadByContact(lead);
         const imgUrl = typeof lead.metaImg === "string" && lead.metaImg.startsWith("http") ? lead.metaImg : undefined;
+        const esNuevoDm = !(await getConvos().catch(() => [])).some((c) => c.id === String(lead.contacto));
         await addConvoMsg(String(lead.contacto), nombre, "coleccionista", String(lead.idea || ""), imgUrl, canal);
         if (lead.waType !== "reaction") {
           pushAll("💬 " + (nombre || (canal === "instagram" ? "Instagram" : "Messenger")), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
@@ -512,6 +522,7 @@ async function procesarLead(lead: Lead): Promise<void> {
             let reply: string | null = null;
             if (ib) reply = ib; // tocó una pregunta de plantilla → respuesta predefinida (cero tokens)
             else if (type === "reaction") reply = null; // a una reacción no se responde
+            else if (cfg.modoManual) reply = esNuevoDm ? ibCfg.waWelcome : null; // solo el saludo
             else if (type === "image" && imgUrl) {
               const media = await fetchUrlBase64(imgUrl);
               reply = media && media.mime.startsWith("image/")
@@ -523,7 +534,7 @@ async function procesarLead(lead: Lead): Promise<void> {
             if (reply) {
               await sendMetaDM(String(lead.contacto), reply);
               await addConvoMsg(String(lead.contacto), "", "ana", reply, undefined, canal);
-            } else {
+            } else if (!cfg.modoManual) {
               logFail("dm-" + canal, "reply null (tipo " + String(lead.waType) + ")");
             }
           } catch (e) {
