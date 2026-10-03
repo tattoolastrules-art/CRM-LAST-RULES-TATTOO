@@ -437,19 +437,19 @@ async function procesarLead(lead: Lead): Promise<void> {
 
         // Notificación push al equipo (en los dispositivos con avisos activados)
         if (lead.waType !== "reaction") {
-          pushAll("💬 " + String(lead.nombre || "WhatsApp"), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
+          await pushAll("💬 " + String(lead.nombre || "WhatsApp"), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
         }
 
         // Avisos IMPORTANTES al WhatsApp del estudio: abonos y confirmaciones de cita
         const texto = String(lead.texto ?? lead.idea ?? "");
         if (lead.waType === "image" && ABONO_RE.test(String(lead.caption || ""))) {
-          notifyStudio(`💰 POSIBLE COMPROBANTE DE ABONO\n${lead.nombre}\n📱 ${lead.contacto}\n“${lead.caption}” (envió imagen)`).catch(() => {});
+          await notifyStudio(`💰 POSIBLE COMPROBANTE DE ABONO\n${lead.nombre}\n📱 ${lead.contacto}\n“${lead.caption}” (envió imagen)`).catch(() => {});
         } else if (ABONO_RE.test(texto)) {
-          notifyStudio(`💰 POSIBLE ABONO / PAGO\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 200)}”`).catch(() => {});
+          await notifyStudio(`💰 POSIBLE ABONO / PAGO\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 200)}”`).catch(() => {});
         } else if (CONFIRM_RE.test(texto)) {
-          notifyStudio(`✅ CONFIRMÓ ASISTENCIA\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 120)}”`).catch(() => {});
+          await notifyStudio(`✅ CONFIRMÓ ASISTENCIA\n${lead.nombre}\n📱 ${lead.contacto}\n“${texto.slice(0, 120)}”`).catch(() => {});
         } else if (lead.waType === "flow_reply") {
-          notifyStudio(`🗂️ NUEVA SOLICITUD (formulario)\n${lead.nombre}\n📱 ${lead.contacto}\n${texto.slice(0, 300)}`).catch(() => {});
+          await notifyStudio(`🗂️ NUEVA SOLICITUD (formulario)\n${lead.nombre}\n📱 ${lead.contacto}\n${texto.slice(0, 300)}`).catch(() => {});
         }
 
         // NOVA responde automáticamente (interruptor en el OS: Reservas → NOVA)
@@ -510,7 +510,7 @@ async function procesarLead(lead: Lead): Promise<void> {
         const esNuevoDm = !(await getConvos().catch(() => [])).some((c) => c.id === String(lead.contacto));
         await addConvoMsg(String(lead.contacto), nombre, "coleccionista", String(lead.idea || ""), imgUrl, canal);
         if (lead.waType !== "reaction") {
-          pushAll("💬 " + (nombre || (canal === "instagram" ? "Instagram" : "Messenger")), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
+          await pushAll("💬 " + (nombre || (canal === "instagram" ? "Instagram" : "Messenger")), String(lead.idea || "Nuevo mensaje"), "/os").catch(() => {});
         }
 
         const cfg = await getSettings();
@@ -586,7 +586,7 @@ async function procesarLead(lead: Lead): Promise<void> {
           }
         }
 
-        pushAll(
+        await pushAll(
           "💬 Comentario en " + (plataforma === "instagram" ? "Instagram" : "Facebook") + extra,
           `${lead.nombre}: ${texto}`.slice(0, 160),
           "/os",

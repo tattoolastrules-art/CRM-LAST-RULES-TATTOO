@@ -91,8 +91,8 @@ export async function checkWindowAlerts(): Promise<number> {
       avisos++;
       const h = Math.max(1, Math.floor(restanteH));
       const canal = c.canal === "whatsapp" ? "WhatsApp" : c.canal === "instagram" ? "Instagram" : "Messenger";
-      pushAll(`⏳ Chat por vencerse · ${c.nombre}`, `Quedan ~${h}h para responder por ${canal}. Después solo con plantilla.`, "/os").catch(() => {});
-      notifyStudio(`⏳ CHAT POR VENCERSE (${canal})\n${c.nombre}\nÚltimo mensaje sin responder — quedan ~${h} horas de ventana. Respondan ya o luego tocará plantilla.`).catch(() => {});
+      await pushAll(`⏳ Chat por vencerse · ${c.nombre}`, `Quedan ~${h}h para responder por ${canal}. Después solo con plantilla.`, "/os").catch(() => {});
+      await notifyStudio(`⏳ CHAT POR VENCERSE (${canal})\n${c.nombre}\nÚltimo mensaje sin responder — quedan ~${h} horas de ventana. Respondan ya o luego tocará plantilla.`).catch(() => {});
     }
   }
   if (changed) await saveJSON("convos", convos);

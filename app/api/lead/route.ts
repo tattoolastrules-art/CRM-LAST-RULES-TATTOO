@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     return Response.json({ error: "Faltan datos" }, { status: 400, headers: CORS });
   }
   const lead = await addLead(body);
-  pushAll("🌐 Nueva reserva web", `${lead.nombre} · ${lead.servicio || "consulta"}`, "/os").catch(() => {});
-  notifyStudio(`🌐 Nueva reserva desde la web:\n${lead.nombre}\n📱 ${lead.contacto}\n${lead.servicio}${lead.idea ? "\n“" + lead.idea + "”" : ""}`).catch(() => {});
+  await pushAll("🌐 Nueva reserva web", `${lead.nombre} · ${lead.servicio || "consulta"}`, "/os").catch(() => {});
+  await notifyStudio(`🌐 Nueva reserva desde la web:\n${lead.nombre}\n📱 ${lead.contacto}\n${lead.servicio}${lead.idea ? "\n“" + lead.idea + "”" : ""}`).catch(() => {});
   return Response.json({ ok: true, id: lead.id }, { headers: CORS });
 }
 
@@ -50,7 +50,7 @@ export async function PATCH(req: Request) {
       const l = leads.find((x) => x.id === b.id);
       if (l) {
         const fecha = l.fechaCita ? new Date(l.fechaCita).toLocaleString("es-CO", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "por definir";
-        notifyStudio(`📅 CITA AGENDADA\n${l.nombre}\n📱 ${l.contacto}\n🗓 ${fecha}${l.maestro ? "\n🎨 " + l.maestro : ""}${l.servicio ? "\n" + l.servicio : ""}`).catch(() => {});
+        await notifyStudio(`📅 CITA AGENDADA\n${l.nombre}\n📱 ${l.contacto}\n🗓 ${fecha}${l.maestro ? "\n🎨 " + l.maestro : ""}${l.servicio ? "\n" + l.servicio : ""}`).catch(() => {});
       }
     }
     return Response.json({ leads });

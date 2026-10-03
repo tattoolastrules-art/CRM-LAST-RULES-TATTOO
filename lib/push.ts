@@ -40,9 +40,11 @@ export async function pushAll(title: string, body: string, url = "/os"): Promise
   await Promise.all(
     subs.map((s) =>
       webpush
-        .sendNotification(s as webpush.PushSubscription, JSON.stringify({ title, body: body.slice(0, 160), url }))
-        .catch((e: { statusCode?: number }) => {
+        // urgency "high": Android entrega al instante aunque el celular esté en reposo (Doze)
+        .sendNotification(s as webpush.PushSubscription, JSON.stringify({ title, body: body.slice(0, 160), url }), { urgency: "high", TTL: 6 * 3600 })
+        .catch((e: { statusCode?: number; body?: string }) => {
           if (e?.statusCode === 404 || e?.statusCode === 410) dead.push(s.endpoint);
+          else console.error("push falló", e?.statusCode, e?.body || e);
         }),
     ),
   );
